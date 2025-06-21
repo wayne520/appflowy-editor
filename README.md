@@ -1,22 +1,23 @@
 # 📝 AppFlowy Editor (Custom Fork)
 
-> 🛠 Flutter용 고급 Rich Text Editor - `intl 0.20.2` 호환 문제 해결 버전입니다.
+> 🛠 A Rich Text Editor for Flutter - Fixed for intl 0.20.2 compatibility  
+> 🛠 Flutter용 고급 리치 텍스트 에디터 - intl 0.20.2 호환 문제 해결 버전입니다
 
 ---
 
-## 📌 소개
+## 📌 Introduction | 소개
 
-이 저장소는 [AppFlowy Editor 공식 저장소](https://github.com/AppFlowy-IO/appflowy-editor)를 기반으로 하며,  
-**Flutter SDK 최신 버전에서 `intl: ^0.20.2`로 인한 충돌을 해결한 커스텀 포크입니다.**
+This repository is a **custom fork** of [AppFlowy Editor](https://github.com/AppFlowy-IO/appflowy-editor),  
+resolving compatibility issues with `intl: ^0.20.2` when used with `flutter_localizations`.
 
-공식 버전에서는 `flutter_localizations`와 충돌하여 `pub get`이 실패하지만,  
-이 포크는 해당 문제를 해결하여 **최신 Flutter 환경에서도 정상적으로 사용**할 수 있습니다.
+이 저장소는 [AppFlowy Editor 공식 저장소](https://github.com/AppFlowy-IO/appflowy-editor)의 **포크(fork)**이며,  
+Flutter 최신 버전에서 `flutter_localizations`와 `intl` 패키지 간 충돌 문제를 해결합니다.
 
 ---
 
-## ✅ 사용 방법
+## ✅ How to Use | 사용 방법
 
-`pubspec.yaml`에 아래처럼 추가하세요:
+Add this to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
