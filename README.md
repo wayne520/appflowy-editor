@@ -25,3 +25,5 @@ dependencies:
     git:
       url: https://github.com/your-username/appflowy-editor.git
       ref: main
+  flutter_localizations:
+    sdk: flutter
