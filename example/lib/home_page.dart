@@ -220,12 +220,12 @@ class _HomePageState extends State<HomePage> {
             );
           }),
           _buildListTile(context, 'Collab Offline', () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const CollabEditorOffline(),
-              ),
-            );
+            // Navigator.push(
+            //   context,
+            //   MaterialPageRoute(
+            //     builder: (context) => const CollabEditorOffline(),
+            //   ),
+            // );
           }),
           _buildListTile(context, 'Custom Theme', () {
             Navigator.push(

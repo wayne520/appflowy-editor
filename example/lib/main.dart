@@ -1,5 +1,5 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
-import 'package:appflowy_editor_sync_plugin/appflowy_editor_sync_utility_functions.dart';
+// import 'package:appflowy_editor_sync_plugin/appflowy_editor_sync_utility_functions.dart';
 import 'package:example/home_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +16,7 @@ void main() async {
     );
   }
   // Important for Offline Collaboration
-  await AppflowyEditorSyncUtilityFunctions.initAppFlowyEditorSync();
+  // await AppflowyEditorSyncUtilityFunctions.initAppFlowyEditorSync();
 
   runApp(const MyApp());
 }
