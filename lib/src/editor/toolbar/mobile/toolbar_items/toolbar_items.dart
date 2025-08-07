@@ -2,6 +2,7 @@ export 'blocks_mobile_toolbar_item.dart';
 export 'code_mobile_toolbar_item.dart';
 export 'color/color.dart';
 export 'divider_mobile_toolbar_item.dart';
+export 'enhanced_multimedia_mobile_toolbar_item.dart';
 export 'heading_mobile_toolbar_item.dart';
 export 'link_mobile_toolbar_item.dart';
 export 'list_mobile_toolbar_item.dart';

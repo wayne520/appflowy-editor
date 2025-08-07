@@ -41,30 +41,65 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // 选择图片选项（支持多选）
-          Expanded(
-            child: MobileToolbarItemMenuBtn(
-              icon: const Icon(Icons.photo_library),
-              label: const Text('选择图片'),
-              isSelected: false,
-              onPressed: () {
-                _handlePhotoAndVideo();
-              },
-            ),
+          // 第一行：选择现有媒体
+          Row(
+            children: [
+              // 选择图片选项（支持多选）
+              Expanded(
+                child: MobileToolbarItemMenuBtn(
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text('选择图片'),
+                  isSelected: false,
+                  onPressed: () {
+                    _handlePhotoAndVideo();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              // 选择视频选项
+              Expanded(
+                child: MobileToolbarItemMenuBtn(
+                  icon: const Icon(Icons.video_library),
+                  label: const Text('选择视频'),
+                  isSelected: false,
+                  onPressed: () {
+                    _handleVideoSelection();
+                  },
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          // 选择视频选项
-          Expanded(
-            child: MobileToolbarItemMenuBtn(
-              icon: const Icon(Icons.videocam),
-              label: const Text('选择视频'),
-              isSelected: false,
-              onPressed: () {
-                _handleVideoSelection();
-              },
-            ),
+          const SizedBox(height: 8),
+          // 第二行：拍摄新媒体
+          Row(
+            children: [
+              // 拍照选项
+              Expanded(
+                child: MobileToolbarItemMenuBtn(
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('拍照'),
+                  isSelected: false,
+                  onPressed: () {
+                    _handleTakePhoto();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              // 录像选项
+              Expanded(
+                child: MobileToolbarItemMenuBtn(
+                  icon: const Icon(Icons.videocam),
+                  label: const Text('录像'),
+                  isSelected: false,
+                  onPressed: () {
+                    _handleRecordVideo();
+                  },
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -199,6 +234,62 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
       }
     } catch (e) {
       _showErrorMessage('插入媒体文件失败: $e');
+    }
+  }
+
+  /// 处理拍照功能
+  Future<void> _handleTakePhoto() async {
+    try {
+      // 使用相机拍照
+      final XFile? photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (photo != null) {
+        await _insertMediaFile(photo, 'image');
+      }
+    } catch (e) {
+      String errorMessage = '拍照失败';
+      if (e.toString().contains('permission') ||
+          e.toString().contains('Permission')) {
+        errorMessage = '相机权限被拒绝，请在设置中允许应用访问相机';
+      } else if (e.toString().contains('camera_access_denied')) {
+        errorMessage = '相机访问被拒绝';
+      } else if (e.toString().contains('No camera available')) {
+        errorMessage = '设备没有可用的相机';
+      }
+
+      _showErrorMessage('$errorMessage: $e');
+    }
+  }
+
+  /// 处理录像功能
+  Future<void> _handleRecordVideo() async {
+    try {
+      // 使用相机录像
+      final XFile? video = await _picker.pickVideo(
+        source: ImageSource.camera,
+        maxDuration: const Duration(minutes: 10), // 最长10分钟
+      );
+
+      if (video != null) {
+        await _insertMediaFile(video, 'video');
+      }
+    } catch (e) {
+      String errorMessage = '录像失败';
+      if (e.toString().contains('permission') ||
+          e.toString().contains('Permission')) {
+        errorMessage = '相机权限被拒绝，请在设置中允许应用访问相机';
+      } else if (e.toString().contains('camera_access_denied')) {
+        errorMessage = '相机访问被拒绝';
+      } else if (e.toString().contains('No camera available')) {
+        errorMessage = '设备没有可用的相机';
+      }
+
+      _showErrorMessage('$errorMessage: $e');
     }
   }
 
