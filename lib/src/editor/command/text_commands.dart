@@ -220,10 +220,17 @@ extension TextTransforms on EditorState {
           (attributes) => attributes[key] == true,
         );
       });
+
+      final newValue = !isHighlight;
+
+      // Update global toggled style for persistent formatting
+      updateToggledStyle(key, newValue);
+
+      // Apply formatting to selected text
       await formatDelta(
         selection,
         {
-          key: !isHighlight,
+          key: newValue,
         },
         selectionExtraInfo: selectionExtraInfo,
       );

@@ -6,9 +6,8 @@ MobileToolbarItem buildTextAndBackgroundColorMobileToolbarItem({
   List<ColorOption>? backgroundColorOptions,
 }) {
   return MobileToolbarItem.withMenu(
-    itemIconBuilder: (context, __, ___) => AFMobileIcon(
-      afMobileIcons: AFMobileIcons.color,
-      color: MobileToolbarTheme.of(context).iconColor,
+    itemIconBuilder: (context, editorState, ___) => _ColorToolbarIcon(
+      editorState: editorState,
     ),
     itemMenuBuilder: (_, editorState, ___) {
       final selection = editorState.selection;
@@ -94,5 +93,66 @@ class _TextAndBackgroundColorMenuState
         ],
       ),
     );
+  }
+}
+
+class _ColorToolbarIcon extends StatelessWidget {
+  const _ColorToolbarIcon({
+    required this.editorState,
+  });
+
+  final EditorState editorState;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: editorState.toggledStyleNotifier,
+      builder: (context, toggledStyle, child) {
+        final style = MobileToolbarTheme.of(context);
+
+        // Get current text color from toggled style
+        final textColorHex = toggledStyle[AppFlowyRichTextKeys.textColor] as String?;
+        final backgroundColorHex = toggledStyle[AppFlowyRichTextKeys.backgroundColor] as String?;
+
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Base icon
+            AFMobileIcon(
+              afMobileIcons: AFMobileIcons.color,
+              color: style.iconColor,
+            ),
+            // Color indicator overlay
+            Positioned(
+              bottom: 2,
+              right: 2,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _getIndicatorColor(textColorHex, backgroundColorHex),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white,
+                    width: 0.5,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Color _getIndicatorColor(String? textColorHex, String? backgroundColorHex) {
+    // Priority: text color > background color > default
+    if (textColorHex != null) {
+      return textColorHex.tryToColor() ?? Colors.black;
+    }
+    if (backgroundColorHex != null) {
+      return backgroundColorHex.tryToColor() ?? Colors.yellow;
+    }
+    return Colors.grey; // Default when no color is selected
   }
 }

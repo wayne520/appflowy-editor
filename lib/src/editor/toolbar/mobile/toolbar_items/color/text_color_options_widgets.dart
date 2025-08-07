@@ -50,14 +50,14 @@ class _TextColorOptionsWidgetsState extends State<TextColorOptionsWidgets> {
               ClearColorButton(
                 onPressed: () {
                   setState(() {
-                    if (selection.isCollapsed) {
-                      // When no text is selected, clear the toggled style
-                      widget.editorState.updateToggledStyle(
-                        AppFlowyRichTextKeys.textColor,
-                        null,
-                      );
-                    } else {
-                      // When text is selected, clear the text color
+                    // Always clear the global toggled style
+                    widget.editorState.updateToggledStyle(
+                      AppFlowyRichTextKeys.textColor,
+                      null,
+                    );
+
+                    // If text is selected, also clear the color from selected text
+                    if (!selection.isCollapsed) {
                       widget.editorState.formatDelta(
                         selection,
                         {AppFlowyRichTextKeys.textColor: null},
@@ -94,18 +94,20 @@ class _TextColorOptionsWidgetsState extends State<TextColorOptionsWidgets> {
                   colorOption: e,
                   onPressed: () {
                     setState(() {
-                      if (selection.isCollapsed) {
-                        // When no text is selected, update the toggled style for future text input
-                        widget.editorState.updateToggledStyle(
-                          AppFlowyRichTextKeys.textColor,
-                          isSelected ? null : e.colorHex,
-                        );
-                      } else {
-                        // When text is selected, format the selected text
+                      final newColor = isSelected ? null : e.colorHex;
+
+                      // Always update the global toggled style for persistent formatting
+                      widget.editorState.updateToggledStyle(
+                        AppFlowyRichTextKeys.textColor,
+                        newColor,
+                      );
+
+                      // If text is selected, also apply the formatting to the selected text
+                      if (!selection.isCollapsed) {
                         formatFontColor(
                           widget.editorState,
                           widget.editorState.selection,
-                          isSelected ? null : e.colorHex,
+                          newColor,
                         );
                       }
                     });

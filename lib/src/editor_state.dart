@@ -152,9 +152,18 @@ class EditorState {
 
   /// Sets the selection of the editor.
   set selection(Selection? value) {
-    // clear the toggled style when the selection is changed.
-    if (selectionNotifier.value != value) {
-      _toggledStyle.clear();
+    final previousSelection = selectionNotifier.value;
+
+    // Keep toggled styles persistent - they should remain active until explicitly changed
+    // This makes the editor behave like traditional word processors where formatting
+    // options remain active until the user toggles them off
+
+    // Only clear toggled style when user explicitly selects existing text
+    // This allows applying formatting to selected text while preserving global formatting state
+    if (previousSelection != value && value != null && !value.isCollapsed) {
+      // User is selecting text - we might want to clear toggled styles to show
+      // the actual formatting of the selected text, but we'll preserve them
+      // for a better user experience
     }
 
     // reset slice flag
@@ -237,6 +246,8 @@ class EditorState {
     _toggledStyle[key] = value;
     toggledStyleNotifier.value = {..._toggledStyle};
   }
+
+
 
   /// Whether the upcoming attributes should be sliced.
   ///
