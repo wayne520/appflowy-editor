@@ -125,17 +125,7 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
 
       if (videoFile != null) {
         print('开始插入视频文件...');
-        // 暂时使用段落节点显示视频信息，避免视频节点导致的崩溃
-        final mediaNode = paragraphNode(
-          text: '🎥 视频: ${videoFile.name}\n📁 路径: ${videoFile.path}',
-        );
-
-        // 插入到编辑器中
-        final transaction = widget.editorState.transaction;
-        transaction.insertNode(widget.selection.end.path.next, mediaNode);
-        await widget.editorState.apply(transaction);
-
-        _showSuccessMessage('视频已添加');
+        await _insertMediaFile(videoFile, 'video');
         print('视频插入成功');
       } else {
         print('用户取消了视频选择');
@@ -185,10 +175,16 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
           },
         );
       } else {
-        // 对于视频，暂时使用段落节点显示视频信息
-        // 避免崩溃，等视频组件完全集成后再切换
-        mediaNode = paragraphNode(
-          text: '🎥 视频: ${file.name}',
+        // 对于视频，使用视频块节点
+        mediaNode = Node(
+          type: 'video',
+          attributes: {
+            'url': path,
+            'align': 'center',
+            'width': 400.0,
+            'height': 225.0,
+            'borderRadius': 12.0,
+          },
         );
       }
 
