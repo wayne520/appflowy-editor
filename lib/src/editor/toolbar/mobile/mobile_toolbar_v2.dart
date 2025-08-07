@@ -402,23 +402,27 @@ class _MobileToolbarState extends State<_MobileToolbar>
                 );
               }
             }
+
+            // When showing menu, don't use fixed height - let the menu content determine its own height
+            if (showingMenu && selectedMenuIndex != null) {
+              return MobileToolbarItemMenu(
+                editorState: widget.editorState,
+                itemMenuBuilder: () {
+                  final menu = widget
+                      .toolbarItems[selectedMenuIndex!].itemMenuBuilder!
+                      .call(
+                    context,
+                    widget.editorState,
+                    this,
+                  );
+                  return menu ?? const SizedBox.shrink();
+                },
+              );
+            }
+
+            // When not showing menu, use spacer with keyboard height
             return SizedBox(
               height: keyboardHeight,
-              child: (showingMenu && selectedMenuIndex != null)
-                  ? MobileToolbarItemMenu(
-                      editorState: widget.editorState,
-                      itemMenuBuilder: () {
-                        final menu = widget
-                            .toolbarItems[selectedMenuIndex!].itemMenuBuilder!
-                            .call(
-                          context,
-                          widget.editorState,
-                          this,
-                        );
-                        return menu ?? const SizedBox.shrink();
-                      },
-                    )
-                  : const SizedBox.shrink(),
             );
           },
         );
