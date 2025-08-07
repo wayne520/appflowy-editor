@@ -1,5 +1,6 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:image_picker/image_picker.dart';
 
 final multimediaMobileToolbarItem = MobileToolbarItem.withMenu(
@@ -99,9 +100,10 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
             mediaType = 'video';
           }
 
-          await _insertMediaFile(file, mediaType);
+          await _insertMediaFile(file, mediaType, showSuccessMessage: false);
         }
 
+        // 只在所有文件都添加完成后显示一次成功提示
         _showSuccessMessage('已添加 ${files.length} 个媒体文件');
       }
     } catch (e) {
@@ -118,14 +120,17 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
 
       if (videoFile != null) {
         await _insertMediaFile(videoFile, 'video');
-        _showSuccessMessage('视频已添加');
       }
     } catch (e) {
       _showErrorMessage('选择视频失败: $e');
     }
   }
 
-  Future<void> _insertMediaFile(XFile file, String type) async {
+  Future<void> _insertMediaFile(
+    XFile file,
+    String type, {
+    bool showSuccessMessage = true,
+  }) async {
     try {
       // 获取文件路径
       final path = file.path;
@@ -160,29 +165,184 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
       transaction.insertNode(widget.selection.end.path.next, mediaNode);
       await widget.editorState.apply(transaction);
 
-      // 显示成功消息
-      _showSuccessMessage('${type == 'image' ? '图片' : '视频'}已添加');
+      // 只在需要时显示成功消息
+      if (showSuccessMessage) {
+        _showSuccessMessage('${type == 'image' ? '图片' : '视频'}已添加');
+      }
     } catch (e) {
       _showErrorMessage('插入媒体文件失败: $e');
     }
   }
 
   void _showSuccessMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => _IOSStyleToast(
+        message: message,
+        icon: CupertinoIcons.checkmark_circle_fill,
+        iconColor: CupertinoColors.systemGreen,
+        onDismiss: () => overlayEntry.remove(),
       ),
     );
+
+    overlay.insert(overlayEntry);
+
+    // 自动关闭
+    Future.delayed(const Duration(seconds: 2), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
   }
 
   void _showErrorMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 3),
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => _IOSStyleToast(
+        message: message,
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        iconColor: CupertinoColors.systemRed,
+        onDismiss: () => overlayEntry.remove(),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+
+    // 自动关闭
+    Future.delayed(const Duration(seconds: 3), () {
+      if (overlayEntry.mounted) {
+        overlayEntry.remove();
+      }
+    });
+  }
+}
+
+/// iOS 风格的 Toast 提示组件
+class _IOSStyleToast extends StatefulWidget {
+  const _IOSStyleToast({
+    required this.message,
+    required this.icon,
+    required this.iconColor,
+    required this.onDismiss,
+  });
+
+  final String message;
+  final IconData icon;
+  final Color iconColor;
+  final VoidCallback onDismiss;
+
+  @override
+  State<_IOSStyleToast> createState() => _IOSStyleToastState();
+}
+
+class _IOSStyleToastState extends State<_IOSStyleToast>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutBack,
+    ));
+
+    _opacityAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    ));
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.of(context).size.height * 0.15,
+      left: 20,
+      right: 20,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _scaleAnimation.value,
+            child: Opacity(
+              opacity: _opacityAnimation.value,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        CupertinoColors.systemBackground.resolveFrom(context),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: CupertinoColors.separator.resolveFrom(context),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        widget.icon,
+                        color: widget.iconColor,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          widget.message,
+                          style: CupertinoTheme.of(context)
+                              .textTheme
+                              .textStyle
+                              .copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
