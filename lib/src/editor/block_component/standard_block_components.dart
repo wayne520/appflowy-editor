@@ -46,7 +46,7 @@ final Map<String, BlockComponentBuilder> standardBlockComponentBuilderMap = {
           'Heading ${node.attributes[HeadingBlockKeys.level]}',
     ),
   ),
-  ImageBlockKeys.type: ImageBlockComponentBuilder(),
+  ImageBlockKeys.type: RoundedImageBlockComponentBuilder(),
   DividerBlockKeys.type: DividerBlockComponentBuilder(
     configuration: standardBlockComponentConfiguration.copyWith(
       padding: (node) => const EdgeInsets.symmetric(vertical: 8.0),
