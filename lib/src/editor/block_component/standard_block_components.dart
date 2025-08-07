@@ -53,6 +53,7 @@ final Map<String, BlockComponentBuilder> standardBlockComponentBuilderMap = {
     ),
   ),
   TableBlockKeys.type: TableBlockComponentBuilder(),
+  VideoBlockKeys.type: VideoBlockComponentBuilder(),
   TableCellBlockKeys.type: TableCellBlockComponentBuilder(),
 };
 

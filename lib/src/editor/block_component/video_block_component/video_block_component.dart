@@ -2,21 +2,43 @@ import 'dart:io';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 
-/// 圆角图片块组件
-class RoundedImageBlockComponentBuilder extends BlockComponentBuilder {
-  RoundedImageBlockComponentBuilder({
-    super.configuration,
-    this.showMenu = false,
-    this.menuBuilder,
-  });
+/// 创建视频节点
+Node videoNode({
+  required String url,
+  String align = 'center',
+  double? width,
+  double? height,
+}) {
+  return Node(
+    type: VideoBlockKeys.type,
+    attributes: {
+      VideoBlockKeys.url: url,
+      VideoBlockKeys.align: align,
+      if (width != null) VideoBlockKeys.width: width,
+      if (height != null) VideoBlockKeys.height: height,
+    },
+  );
+}
 
-  final bool showMenu;
-  final ImageBlockComponentMenuBuilder? menuBuilder;
+/// 视频块组件的键
+class VideoBlockKeys {
+  static const String type = 'video';
+  static const String url = 'url';
+  static const String width = 'width';
+  static const String height = 'height';
+  static const String align = 'align';
+}
+
+/// 视频块组件构建器
+class VideoBlockComponentBuilder extends BlockComponentBuilder {
+  VideoBlockComponentBuilder({
+    super.configuration,
+  });
 
   @override
   BlockComponentWidget build(BlockComponentContext blockComponentContext) {
     final node = blockComponentContext.node;
-    return RoundedImageBlockComponentWidget(
+    return VideoBlockComponentWidget(
       key: node.key,
       node: node,
       showActions: showActions(node),
@@ -29,8 +51,6 @@ class RoundedImageBlockComponentBuilder extends BlockComponentBuilder {
         blockComponentContext,
         state,
       ),
-      showMenu: showMenu,
-      menuBuilder: menuBuilder,
     );
   }
 
@@ -39,28 +59,22 @@ class RoundedImageBlockComponentBuilder extends BlockComponentBuilder {
       (node) => node.delta == null && node.children.isEmpty;
 }
 
-class RoundedImageBlockComponentWidget extends BlockComponentStatefulWidget {
-  const RoundedImageBlockComponentWidget({
+class VideoBlockComponentWidget extends BlockComponentStatefulWidget {
+  const VideoBlockComponentWidget({
     super.key,
     required super.node,
     super.showActions,
     super.actionBuilder,
     super.actionTrailingBuilder,
     super.configuration = const BlockComponentConfiguration(),
-    this.showMenu = false,
-    this.menuBuilder,
   });
 
-  final bool showMenu;
-  final ImageBlockComponentMenuBuilder? menuBuilder;
-
   @override
-  State<RoundedImageBlockComponentWidget> createState() =>
-      _RoundedImageBlockComponentWidgetState();
+  State<VideoBlockComponentWidget> createState() =>
+      _VideoBlockComponentWidgetState();
 }
 
-class _RoundedImageBlockComponentWidgetState
-    extends State<RoundedImageBlockComponentWidget>
+class _VideoBlockComponentWidgetState extends State<VideoBlockComponentWidget>
     with
         SelectableMixin,
         DefaultSelectableMixin,
@@ -75,17 +89,17 @@ class _RoundedImageBlockComponentWidgetState
 
   RenderBox get _renderBox => context.findRenderObject() as RenderBox;
 
-  final imageKey = GlobalKey();
+  final videoKey = GlobalKey();
 
   // 实现 DefaultSelectableMixin 需要的 keys
   @override
-  GlobalKey get blockComponentKey => imageKey;
+  GlobalKey get blockComponentKey => videoKey;
 
   @override
-  GlobalKey get containerKey => imageKey;
+  GlobalKey get containerKey => videoKey;
 
   @override
-  GlobalKey get forwardKey => imageKey;
+  GlobalKey get forwardKey => videoKey;
 
   // 实现 NestedBlockComponentStatefulWidgetMixin 需要的方法
   @override
@@ -99,19 +113,19 @@ class _RoundedImageBlockComponentWidgetState
   Widget build(BuildContext context) {
     final node = widget.node;
     final attributes = node.attributes;
-    final src = attributes[ImageBlockKeys.url];
+    final src = attributes[VideoBlockKeys.url];
 
     final alignment = AlignmentExtension.fromString(
-      attributes[ImageBlockKeys.align] ?? 'center',
+      attributes[VideoBlockKeys.align] ?? 'center',
     );
-    final width = attributes[ImageBlockKeys.width]?.toDouble() ??
+    final width = attributes[VideoBlockKeys.width]?.toDouble() ??
         MediaQuery.of(context).size.width;
-    final height = attributes[ImageBlockKeys.height]?.toDouble();
+    final height = attributes[VideoBlockKeys.height]?.toDouble() ?? 200.0;
 
     // 获取圆角半径
-    final borderRadius = attributes['borderRadius']?.toDouble() ?? 0.0;
+    final borderRadius = attributes['borderRadius']?.toDouble() ?? 12.0;
 
-    Widget child = _buildRoundedImage(
+    Widget child = _buildVideoPlayer(
       src: src,
       width: width,
       height: height,
@@ -120,7 +134,7 @@ class _RoundedImageBlockComponentWidgetState
     );
 
     child = Padding(
-      key: imageKey,
+      key: videoKey,
       padding: padding,
       child: child,
     );
@@ -149,71 +163,218 @@ class _RoundedImageBlockComponentWidgetState
     return child;
   }
 
-  Widget _buildRoundedImage({
+  Widget _buildVideoPlayer({
     required String src,
     required double width,
-    double? height,
+    required double height,
     required double borderRadius,
     required Alignment alignment,
   }) {
-    Widget imageWidget;
-
-    // 根据源类型加载图片
-    if (src.startsWith('http')) {
-      imageWidget = Image.network(
-        src,
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            _buildErrorWidget(width, height),
-      );
-    } else {
-      imageWidget = Image.file(
-        File(src),
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            _buildErrorWidget(width, height),
-      );
-    }
-
-    // 如果有圆角，应用圆角效果
-    if (borderRadius > 0) {
-      imageWidget = ClipRRect(
+    // 创建视频预览容器
+    Widget videoWidget = Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.black87,
         borderRadius: BorderRadius.circular(borderRadius),
-        child: imageWidget,
-      );
-    }
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 视频缩略图或占位符
+          _buildVideoThumbnail(src, width, height, borderRadius),
 
-    // 应用对齐方式并添加点击功能（避免与拖拽冲突）
+          // 播放按钮
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.6),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.play_arrow_rounded,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+
+          // 视频信息
+          Positioned(
+            bottom: 12,
+            left: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.videocam_rounded,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _getVideoFileName(src),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // 应用对齐方式并添加长按功能
     return Align(
       alignment: alignment,
       child: GestureDetector(
-        onTap: () => _showImageContextMenu(context),
-        child: imageWidget,
+        onTap: () => _playVideo(src),
+        onLongPress: () => _showVideoContextMenu(context),
+        child: videoWidget,
       ),
     );
   }
 
-  Widget _buildErrorWidget(double width, double? height) {
+  Widget _buildVideoThumbnail(
+    String src,
+    double width,
+    double height,
+    double borderRadius,
+  ) {
+    // 这里可以实现视频缩略图生成
+    // 目前使用占位符
     return Container(
       width: width,
-      height: height ?? 200,
+      height: height,
       decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(8.0),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.grey[800]!,
+            Colors.grey[900]!,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
-      child: const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.broken_image, size: 50, color: Colors.grey),
-          SizedBox(height: 8),
-          Text('图片加载失败', style: TextStyle(color: Colors.grey)),
-        ],
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.movie_rounded,
+              size: 48,
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '视频预览',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  String _getVideoFileName(String path) {
+    return path.split('/').last;
+  }
+
+  void _playVideo(String src) {
+    // 这里可以实现视频播放功能
+    // 可以使用 video_player 插件或者系统默认播放器
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('播放视频: ${_getVideoFileName(src)}'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // 显示视频上下文菜单
+  void _showVideoContextMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return _VideoContextMenu(
+          onResizeSmall: () {
+            Navigator.pop(context);
+            _resizeVideo(VideoSize.small);
+          },
+          onResizeMedium: () {
+            Navigator.pop(context);
+            _resizeVideo(VideoSize.medium);
+          },
+          onResizeLarge: () {
+            Navigator.pop(context);
+            _resizeVideo(VideoSize.large);
+          },
+          onDelete: () {
+            Navigator.pop(context);
+            _deleteVideo();
+          },
+        );
+      },
+    );
+  }
+
+  // 调整视频大小
+  void _resizeVideo(VideoSize size) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    double newWidth;
+    double newHeight;
+
+    switch (size) {
+      case VideoSize.small:
+        newWidth = screenWidth * 0.3; // 30% 屏幕宽度
+        newHeight = newWidth * 9 / 16; // 16:9 比例
+        break;
+      case VideoSize.medium:
+        newWidth = screenWidth * 0.6; // 60% 屏幕宽度
+        newHeight = newWidth * 9 / 16;
+        break;
+      case VideoSize.large:
+        newWidth = screenWidth * 0.9; // 90% 屏幕宽度
+        newHeight = newWidth * 9 / 16;
+        break;
+    }
+
+    final transaction = editorState.transaction;
+    transaction.updateNode(node, {
+      ...node.attributes,
+      VideoBlockKeys.width: newWidth,
+      VideoBlockKeys.height: newHeight,
+    });
+    editorState.apply(transaction);
+  }
+
+  // 删除视频
+  void _deleteVideo() {
+    final transaction = editorState.transaction;
+    transaction.deleteNode(node);
+    editorState.apply(transaction);
   }
 
   // 实现 SelectableMixin 的抽象方法
@@ -255,11 +416,11 @@ class _RoundedImageBlockComponentWidgetState
   }) {
     if (_renderBox.hasSize) {
       final parentBox = context.findRenderObject();
-      final imageBox = imageKey.currentContext?.findRenderObject();
-      if (parentBox is RenderBox && imageBox is RenderBox) {
+      final videoBox = videoKey.currentContext?.findRenderObject();
+      if (parentBox is RenderBox && videoBox is RenderBox) {
         return [
-          imageBox.localToGlobal(Offset.zero, ancestor: parentBox) &
-              imageBox.size,
+          videoBox.localToGlobal(Offset.zero, ancestor: parentBox) &
+              videoBox.size,
         ];
       }
     }
@@ -277,78 +438,18 @@ class _RoundedImageBlockComponentWidgetState
     bool shiftWithBaseOffset = false,
   }) =>
       _renderBox.localToGlobal(parentOffset);
-
-  // 显示图片上下文菜单
-  void _showImageContextMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return _ImageContextMenu(
-          onResizeSmall: () {
-            Navigator.pop(context);
-            _resizeImage(ImageSize.small);
-          },
-          onResizeMedium: () {
-            Navigator.pop(context);
-            _resizeImage(ImageSize.medium);
-          },
-          onResizeLarge: () {
-            Navigator.pop(context);
-            _resizeImage(ImageSize.large);
-          },
-          onDelete: () {
-            Navigator.pop(context);
-            _deleteImage();
-          },
-        );
-      },
-    );
-  }
-
-  // 调整图片大小
-  void _resizeImage(ImageSize size) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    double newWidth;
-
-    switch (size) {
-      case ImageSize.small:
-        newWidth = screenWidth * 0.3; // 30% 屏幕宽度
-        break;
-      case ImageSize.medium:
-        newWidth = screenWidth * 0.6; // 60% 屏幕宽度
-        break;
-      case ImageSize.large:
-        newWidth = screenWidth * 0.9; // 90% 屏幕宽度
-        break;
-    }
-
-    final transaction = editorState.transaction;
-    transaction.updateNode(node, {
-      ...node.attributes,
-      ImageBlockKeys.width: newWidth,
-    });
-    editorState.apply(transaction);
-  }
-
-  // 删除图片
-  void _deleteImage() {
-    final transaction = editorState.transaction;
-    transaction.deleteNode(node);
-    editorState.apply(transaction);
-  }
 }
 
-// 图片大小枚举
-enum ImageSize {
+// 视频大小枚举
+enum VideoSize {
   small,
   medium,
   large,
 }
 
-/// 自定义图片上下文菜单
-class _ImageContextMenu extends StatelessWidget {
-  const _ImageContextMenu({
+/// 自定义视频上下文菜单
+class _VideoContextMenu extends StatelessWidget {
+  const _VideoContextMenu({
     required this.onResizeSmall,
     required this.onResizeMedium,
     required this.onResizeLarge,
@@ -384,13 +485,13 @@ class _ImageContextMenu extends StatelessWidget {
             child: Row(
               children: [
                 Icon(
-                  Icons.photo_size_select_actual_rounded,
+                  Icons.movie_rounded,
                   color: Theme.of(context).colorScheme.primary,
                   size: 24,
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '图片操作',
+                  '视频操作',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -405,27 +506,27 @@ class _ImageContextMenu extends StatelessWidget {
           _buildMenuSection(
             context,
             title: '调整大小',
-            icon: Icons.photo_size_select_large_rounded,
+            icon: Icons.aspect_ratio_rounded,
             children: [
               _buildMenuItem(
                 context,
-                icon: Icons.photo_size_select_small,
-                title: '小图',
-                subtitle: '30% 屏幕宽度',
+                icon: Icons.video_library_outlined,
+                title: '小视频',
+                subtitle: '30% 屏幕宽度 (16:9)',
                 onTap: onResizeSmall,
               ),
               _buildMenuItem(
                 context,
-                icon: Icons.photo_size_select_actual,
-                title: '中图',
-                subtitle: '60% 屏幕宽度',
+                icon: Icons.video_library,
+                title: '中视频',
+                subtitle: '60% 屏幕宽度 (16:9)',
                 onTap: onResizeMedium,
               ),
               _buildMenuItem(
                 context,
-                icon: Icons.photo_size_select_large,
-                title: '大图',
-                subtitle: '90% 屏幕宽度',
+                icon: Icons.video_library_rounded,
+                title: '大视频',
+                subtitle: '90% 屏幕宽度 (16:9)',
                 onTap: onResizeLarge,
               ),
             ],
@@ -437,7 +538,7 @@ class _ImageContextMenu extends StatelessWidget {
           _buildMenuItem(
             context,
             icon: Icons.delete_rounded,
-            title: '删除图片',
+            title: '删除视频',
             subtitle: '此操作不可撤销',
             onTap: onDelete,
             isDestructive: true,

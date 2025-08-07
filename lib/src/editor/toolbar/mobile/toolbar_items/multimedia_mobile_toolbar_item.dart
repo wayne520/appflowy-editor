@@ -113,16 +113,48 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
 
   Future<void> _handleVideoSelection() async {
     try {
-      // 选择视频文件
+      print('开始选择视频...');
+
+      // 尝试选择视频，添加详细的错误处理
       final videoFile = await _picker.pickVideo(
         source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 120), // 限制视频长度
       );
 
+      print('视频选择结果: ${videoFile?.path}');
+
       if (videoFile != null) {
-        await _insertMediaFile(videoFile, 'video');
+        print('开始插入视频文件...');
+        // 暂时使用段落节点显示视频信息，避免视频节点导致的崩溃
+        final mediaNode = paragraphNode(
+          text: '🎥 视频: ${videoFile.name}\n📁 路径: ${videoFile.path}',
+        );
+
+        // 插入到编辑器中
+        final transaction = widget.editorState.transaction;
+        transaction.insertNode(widget.selection.end.path.next, mediaNode);
+        await widget.editorState.apply(transaction);
+
+        _showSuccessMessage('视频已添加');
+        print('视频插入成功');
+      } else {
+        print('用户取消了视频选择');
       }
-    } catch (e) {
-      _showErrorMessage('选择视频失败: $e');
+    } catch (e, stackTrace) {
+      print('视频选择失败: $e');
+      print('堆栈跟踪: $stackTrace');
+
+      // 提供更详细的错误信息和解决方案
+      String errorMessage = '选择视频失败';
+      if (e.toString().contains('permission') ||
+          e.toString().contains('Permission')) {
+        errorMessage = '权限不足\n\n请在系统设置中允许应用访问：\n• 相机权限\n• 相册权限\n• 存储权限';
+      } else {
+        errorMessage =
+            '选择视频失败\n\n可能的解决方案：\n• 检查应用权限设置\n• 重启应用后重试\n• 确保设备有足够存储空间';
+      }
+
+      _showErrorMessage(errorMessage);
     }
   }
 
@@ -153,10 +185,10 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
           },
         );
       } else {
-        // 对于视频，创建一个带有视频信息的段落节点
-        // 因为 AppFlowy Editor 可能还没有专门的视频块
+        // 对于视频，暂时使用段落节点显示视频信息
+        // 避免崩溃，等视频组件完全集成后再切换
         mediaNode = paragraphNode(
-          text: '🎥 视频文件: ${file.name}\n📁 路径: $path',
+          text: '🎥 视频: ${file.name}',
         );
       }
 

@@ -50,6 +50,9 @@ export 'standard_block_components.dart';
 export 'table_block_component/table_action.dart';
 // table
 export 'table_block_component/table_block_component.dart';
+
+// video
+export 'video_block_component/video_block_component.dart';
 export 'table_block_component/table_cell_block_component.dart';
 export 'table_block_component/table_commands.dart';
 // to-do list
