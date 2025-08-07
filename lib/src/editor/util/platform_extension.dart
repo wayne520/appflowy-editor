@@ -24,6 +24,22 @@ extension PlatformExtension on Platform {
   /// Returns true if the operating system is Android and not running on Web platform.
   static bool get isAndroid => UniversalPlatform.isAndroid;
 
+  /// Returns true if the operating system is HarmonyOS/OpenHarmony.
+  static bool get isHarmonyOS {
+    if (kIsWeb) return false;
+    try {
+      // Check if running on HarmonyOS by examining system properties
+      // HarmonyOS typically identifies itself through specific system properties
+      return Platform.operatingSystem.toLowerCase().contains('harmony') ||
+             Platform.operatingSystem.toLowerCase().contains('ohos') ||
+             // Additional check for HarmonyOS environment variables or system info
+             Platform.environment.containsKey('OHOS_SDK_HOME') ||
+             Platform.environment.containsKey('HARMONY_HOME');
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// Returns true if the operating system is macOS and running on Web platform.
   static bool get isWebOnMacOS {
     if (!kIsWeb) {

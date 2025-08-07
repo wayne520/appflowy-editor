@@ -22,5 +22,15 @@ void main() {
         expect(PlatformExtension.isWebOnMacOS, false);
       }
     });
+
+    test('test HarmonyOS detection', () {
+      // Test that HarmonyOS detection doesn't throw exceptions
+      expect(() => PlatformExtension.isHarmonyOS, returnsNormally);
+
+      // On web, HarmonyOS should always return false
+      if (kIsWeb) {
+        expect(PlatformExtension.isHarmonyOS, false);
+      }
+    });
   });
 }

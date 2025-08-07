@@ -47,6 +47,11 @@ class KeyboardHeightObserver {
       return;
     }
 
+    // Similar handling for HarmonyOS to avoid duplicate notifications
+    if (PlatformExtension.isHarmonyOS && height == currentKeyboardHeight) {
+      return;
+    }
+
     for (final listener in _listeners) {
       listener(height);
     }

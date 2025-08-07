@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:appflowy_editor/src/editor/toolbar/mobile/utils/keyboard_height_observer.dart';
+import 'package:appflowy_editor/src/editor/util/platform_extension.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -282,6 +283,13 @@ class _MobileToolbarState extends State<_MobileToolbar>
               MediaQuery.of(context).viewPadding.bottom;
         }
       }
+      // Special handling for HarmonyOS to ensure toolbar appears above keyboard
+      else if (PlatformExtension.isHarmonyOS) {
+        if (cachedKeyboardHeight.value != 0) {
+          // For HarmonyOS, add optimal spacing adjustment to minimize gaps
+          cachedKeyboardHeight.value += _getHarmonyOSSpacingAdjustment(context);
+        }
+      }
     }
 
     if (height == 0) {
@@ -393,15 +401,8 @@ class _MobileToolbarState extends State<_MobileToolbar>
         return ValueListenableBuilder(
           valueListenable: showMenuNotifier,
           builder: (_, showingMenu, __) {
-            var keyboardHeight = height;
-            if (defaultTargetPlatform == TargetPlatform.android) {
-              if (!showingMenu) {
-                keyboardHeight = max(
-                  keyboardHeight,
-                  MediaQuery.of(context).viewInsets.bottom,
-                );
-              }
-            }
+            // Use the centralized keyboard height calculation method
+            final keyboardHeight = _calculateKeyboardHeight(context, height, showingMenu);
 
             // When showing menu, don't use fixed height - let the menu content determine its own height
             if (showingMenu && selectedMenuIndex != null) {
@@ -421,9 +422,7 @@ class _MobileToolbarState extends State<_MobileToolbar>
             }
 
             // When not showing menu, use spacer with keyboard height
-            return SizedBox(
-              height: keyboardHeight,
-            );
+            return _buildKeyboardSpacer(context, keyboardHeight);
           },
         );
       },
@@ -439,6 +438,109 @@ class _MobileToolbarState extends State<_MobileToolbar>
 
   void _closeKeyboard() {
     widget.editorState.service.keyboardService?.closeKeyboard();
+  }
+
+  /// Calculate the appropriate keyboard height for different platforms
+  /// This method ensures proper toolbar positioning above the keyboard
+  double _calculateKeyboardHeight(BuildContext context, double cachedHeight, bool showingMenu) {
+    var keyboardHeight = cachedHeight;
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      if (!showingMenu) {
+        keyboardHeight = max(
+          keyboardHeight,
+          MediaQuery.of(context).viewInsets.bottom,
+        );
+      }
+    }
+    // Special handling for HarmonyOS keyboard height
+    else if (PlatformExtension.isHarmonyOS) {
+      if (!showingMenu) {
+        // For HarmonyOS, use the current viewInsets directly to avoid extra spacing
+        final currentViewInsets = MediaQuery.of(context).viewInsets.bottom;
+
+        // Use the most accurate keyboard height available
+        if (currentViewInsets > 0) {
+          keyboardHeight = currentViewInsets;
+          // Add minimal spacing adjustment to ensure proper positioning
+          keyboardHeight += _getHarmonyOSSpacingAdjustment(context);
+        } else {
+          keyboardHeight = max(keyboardHeight, currentViewInsets);
+        }
+      }
+    }
+
+    return keyboardHeight;
+  }
+
+  /// Get the optimal spacing adjustment for HarmonyOS
+  /// This helps minimize the gap between keyboard and toolbar
+  double _getHarmonyOSSpacingAdjustment(BuildContext context) {
+    if (!PlatformExtension.isHarmonyOS) return 0.0;
+
+    final mediaQuery = MediaQuery.of(context);
+    final viewInsets = mediaQuery.viewInsets.bottom;
+    final viewPadding = mediaQuery.viewPadding.bottom;
+
+    // If keyboard is not visible, no adjustment needed
+    if (viewInsets <= 0) return 0.0;
+
+    // Calculate a minimal adjustment based on system UI
+    // This helps ensure the toolbar is positioned correctly without excessive spacing
+    final baseAdjustment = viewPadding * 0.2; // Very minimal adjustment
+
+    // Additional adjustment based on screen density
+    final devicePixelRatio = mediaQuery.devicePixelRatio;
+    final densityAdjustment = devicePixelRatio > 2.0 ? 2.0 : 0.0;
+
+    return baseAdjustment + densityAdjustment;
+  }
+
+  /// Get the appropriate background color for HarmonyOS keyboard spacer
+  Color _getHarmonyOSSpacerColor(BuildContext context) {
+    final theme = Theme.of(context);
+    final brightness = theme.brightness;
+
+    // Adapt to system theme
+    if (brightness == Brightness.dark) {
+      // Dark theme: use darker gray that matches dark input methods
+      return const Color(0xFF2C2C2C);
+    } else {
+      // Light theme: use light gray that matches light input methods
+      return const Color(0xFFF5F5F5);
+    }
+  }
+
+  /// Build keyboard spacer with appropriate background color for different platforms
+  Widget _buildKeyboardSpacer(BuildContext context, double height) {
+    if (height <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    // For HarmonyOS, use a background color that matches the input method
+    if (PlatformExtension.isHarmonyOS) {
+      final spacerColor = _getHarmonyOSSpacerColor(context);
+
+      return Container(
+        height: height,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: spacerColor,
+          // Add a subtle gradient to create a more natural transition
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              spacerColor.withOpacity(0.95), // Slightly more transparent at top
+              spacerColor, // Full opacity at bottom
+            ],
+          ),
+        ),
+      );
+    }
+
+    // For other platforms, use the default transparent spacer
+    return SizedBox(height: height);
   }
 }
 
