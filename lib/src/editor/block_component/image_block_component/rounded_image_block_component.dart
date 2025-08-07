@@ -187,10 +187,13 @@ class _RoundedImageBlockComponentWidgetState
       );
     }
 
-    // 应用对齐方式
+    // 应用对齐方式并添加长按功能
     return Align(
       alignment: alignment,
-      child: imageWidget,
+      child: GestureDetector(
+        onLongPress: () => _showImageContextMenu(context),
+        child: imageWidget,
+      ),
     );
   }
 
@@ -274,4 +277,281 @@ class _RoundedImageBlockComponentWidgetState
     bool shiftWithBaseOffset = false,
   }) =>
       _renderBox.localToGlobal(parentOffset);
+
+  // 显示图片上下文菜单
+  void _showImageContextMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return _ImageContextMenu(
+          onResizeSmall: () {
+            Navigator.pop(context);
+            _resizeImage(ImageSize.small);
+          },
+          onResizeMedium: () {
+            Navigator.pop(context);
+            _resizeImage(ImageSize.medium);
+          },
+          onResizeLarge: () {
+            Navigator.pop(context);
+            _resizeImage(ImageSize.large);
+          },
+          onDelete: () {
+            Navigator.pop(context);
+            _deleteImage();
+          },
+        );
+      },
+    );
+  }
+
+  // 调整图片大小
+  void _resizeImage(ImageSize size) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    double newWidth;
+
+    switch (size) {
+      case ImageSize.small:
+        newWidth = screenWidth * 0.3; // 30% 屏幕宽度
+        break;
+      case ImageSize.medium:
+        newWidth = screenWidth * 0.6; // 60% 屏幕宽度
+        break;
+      case ImageSize.large:
+        newWidth = screenWidth * 0.9; // 90% 屏幕宽度
+        break;
+    }
+
+    final transaction = editorState.transaction;
+    transaction.updateNode(node, {
+      ...node.attributes,
+      ImageBlockKeys.width: newWidth,
+    });
+    editorState.apply(transaction);
+  }
+
+  // 删除图片
+  void _deleteImage() {
+    final transaction = editorState.transaction;
+    transaction.deleteNode(node);
+    editorState.apply(transaction);
+  }
+}
+
+// 图片大小枚举
+enum ImageSize {
+  small,
+  medium,
+  large,
+}
+
+/// 自定义图片上下文菜单
+class _ImageContextMenu extends StatelessWidget {
+  const _ImageContextMenu({
+    required this.onResizeSmall,
+    required this.onResizeMedium,
+    required this.onResizeLarge,
+    required this.onDelete,
+  });
+
+  final VoidCallback onResizeSmall;
+  final VoidCallback onResizeMedium;
+  final VoidCallback onResizeLarge;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 标题
+          Container(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.photo_size_select_actual_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '图片操作',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1),
+
+          // 调整大小选项
+          _buildMenuSection(
+            context,
+            title: '调整大小',
+            icon: Icons.photo_size_select_large_rounded,
+            children: [
+              _buildMenuItem(
+                context,
+                icon: Icons.photo_size_select_small,
+                title: '小图',
+                subtitle: '30% 屏幕宽度',
+                onTap: onResizeSmall,
+              ),
+              _buildMenuItem(
+                context,
+                icon: Icons.photo_size_select_actual,
+                title: '中图',
+                subtitle: '60% 屏幕宽度',
+                onTap: onResizeMedium,
+              ),
+              _buildMenuItem(
+                context,
+                icon: Icons.photo_size_select_large,
+                title: '大图',
+                subtitle: '90% 屏幕宽度',
+                onTap: onResizeLarge,
+              ),
+            ],
+          ),
+
+          const Divider(height: 1),
+
+          // 删除选项
+          _buildMenuItem(
+            context,
+            icon: Icons.delete_rounded,
+            title: '删除图片',
+            subtitle: '此操作不可撤销',
+            onTap: onDelete,
+            isDestructive: true,
+          ),
+
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuSection(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+            ],
+          ),
+        ),
+        ...children,
+      ],
+    );
+  }
+
+  Widget _buildMenuItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    final color = isDestructive
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.onSurface;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isDestructive
+                      ? Theme.of(context).colorScheme.errorContainer
+                      : Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: isDestructive
+                      ? Theme.of(context).colorScheme.onErrorContainer
+                      : Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
