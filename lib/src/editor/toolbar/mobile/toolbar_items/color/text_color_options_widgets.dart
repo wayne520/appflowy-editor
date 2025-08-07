@@ -21,68 +21,102 @@ class TextColorOptionsWidgets extends StatefulWidget {
 class _TextColorOptionsWidgetsState extends State<TextColorOptionsWidgets> {
   @override
   Widget build(BuildContext context) {
-    final style = MobileToolbarTheme.of(context);
+    // Listen to toggledStyle changes to update UI when styles change
+    return ValueListenableBuilder(
+      valueListenable: widget.editorState.toggledStyleNotifier,
+      builder: (context, toggledStyle, child) {
+        final style = MobileToolbarTheme.of(context);
 
-    final selection = widget.selection;
-    final nodes = widget.editorState.getNodesInSelection(selection);
-    final hasTextColor = nodes.allSatisfyInSelection(selection, (delta) {
-      return delta.everyAttributes(
-        (attributes) => attributes[AppFlowyRichTextKeys.textColor] != null,
-      );
-    });
+        final selection = widget.selection;
+        final nodes = widget.editorState.getNodesInSelection(selection);
+        final hasTextColor = nodes.allSatisfyInSelection(selection, (delta) {
+          return delta.everyAttributes(
+            (attributes) => attributes[AppFlowyRichTextKeys.textColor] != null,
+          );
+        });
 
-    final colorOptions = widget.textColorOptions ?? generateTextColorOptions();
+        final colorOptions =
+            widget.textColorOptions ?? generateTextColorOptions();
 
-    return Scrollbar(
-      child: GridView(
-        shrinkWrap: true,
-        gridDelegate: buildMobileToolbarMenuGridDelegate(
-          mobileToolbarStyle: style,
-          crossAxisCount: 3,
-        ),
-        padding: EdgeInsets.all(style.buttonSpacing),
-        children: [
-          ClearColorButton(
-            onPressed: () {
-              if (hasTextColor) {
-                setState(() {
-                  widget.editorState.formatDelta(
-                    selection,
-                    {AppFlowyRichTextKeys.textColor: null},
-                  );
-                });
-              }
-            },
-            isSelected: !hasTextColor,
-          ),
-          // color option buttons
-          ...colorOptions.map((e) {
-            final isSelected = nodes.allSatisfyInSelection(selection, (delta) {
-              return delta.everyAttributes(
-                (attributes) =>
-                    attributes[AppFlowyRichTextKeys.textColor] == e.colorHex,
-              );
-            });
-            return ColorButton(
-              colorOption: e,
-              onPressed: () {
-                if (!isSelected) {
+        return Scrollbar(
+          child: GridView(
+            shrinkWrap: true,
+            gridDelegate: buildMobileToolbarMenuGridDelegate(
+              mobileToolbarStyle: style,
+              crossAxisCount: 3,
+            ),
+            padding: EdgeInsets.all(style.buttonSpacing),
+            children: [
+              ClearColorButton(
+                onPressed: () {
                   setState(() {
-                    formatFontColor(
-                      widget.editorState,
-                      widget.editorState.selection,
-                      e.colorHex,
+                    if (selection.isCollapsed) {
+                      // When no text is selected, clear the toggled style
+                      widget.editorState.updateToggledStyle(
+                        AppFlowyRichTextKeys.textColor,
+                        null,
+                      );
+                    } else {
+                      // When text is selected, clear the text color
+                      widget.editorState.formatDelta(
+                        selection,
+                        {AppFlowyRichTextKeys.textColor: null},
+                      );
+                    }
+                  });
+                },
+                isSelected: selection.isCollapsed
+                    ? widget.editorState
+                            .toggledStyle[AppFlowyRichTextKeys.textColor] ==
+                        null
+                    : !hasTextColor,
+              ),
+              // color option buttons
+              ...colorOptions.map((e) {
+                final bool isSelected;
+                if (selection.isCollapsed) {
+                  // When no text is selected, check the toggled style
+                  isSelected = widget.editorState
+                          .toggledStyle[AppFlowyRichTextKeys.textColor] ==
+                      e.colorHex;
+                } else {
+                  // When text is selected, check the selected text attributes
+                  isSelected = nodes.allSatisfyInSelection(selection, (delta) {
+                    return delta.everyAttributes(
+                      (attributes) =>
+                          attributes[AppFlowyRichTextKeys.textColor] ==
+                          e.colorHex,
                     );
                   });
-                } else {
-                  // TODO(yijing): handle when no text is selected
                 }
-              },
-              isSelected: isSelected,
-            );
-          }),
-        ],
-      ),
+
+                return ColorButton(
+                  colorOption: e,
+                  onPressed: () {
+                    setState(() {
+                      if (selection.isCollapsed) {
+                        // When no text is selected, update the toggled style for future text input
+                        widget.editorState.updateToggledStyle(
+                          AppFlowyRichTextKeys.textColor,
+                          isSelected ? null : e.colorHex,
+                        );
+                      } else {
+                        // When text is selected, format the selected text
+                        formatFontColor(
+                          widget.editorState,
+                          widget.editorState.selection,
+                          isSelected ? null : e.colorHex,
+                        );
+                      }
+                    });
+                  },
+                  isSelected: isSelected,
+                );
+              }),
+            ],
+          ),
+        );
+      },
     );
   }
 }

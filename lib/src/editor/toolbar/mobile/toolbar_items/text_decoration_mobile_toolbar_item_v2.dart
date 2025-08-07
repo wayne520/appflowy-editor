@@ -70,9 +70,9 @@ class _TextDecorationMenuState extends State<_TextDecorationMenu> {
       final nodes = widget.editorState.getNodesInSelection(selection);
       final bool isSelected;
       if (selection.isCollapsed) {
-        isSelected = widget.editorState.toggledStyle.containsKey(
-          currentDecoration.name,
-        );
+        // When no text is selected, check the toggled style value, not just if key exists
+        isSelected =
+            widget.editorState.toggledStyle[currentDecoration.name] == true;
       } else {
         isSelected = nodes.allSatisfyInSelection(selection, (delta) {
           return delta.everyAttributes(
