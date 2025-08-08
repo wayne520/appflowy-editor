@@ -110,8 +110,8 @@ class _RoundedImageBlockComponentWidgetState
         MediaQuery.of(context).size.width;
     final height = attributes[ImageBlockKeys.height]?.toDouble();
 
-    // 获取圆角半径
-    final borderRadius = attributes['borderRadius']?.toDouble() ?? 0.0;
+    // 获取圆角半径，默认12.0像素
+    final borderRadius = attributes['borderRadius']?.toDouble() ?? 12.0;
 
     Widget child = _buildRoundedImage(
       src: src,
