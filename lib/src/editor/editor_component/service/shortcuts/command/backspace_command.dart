@@ -46,7 +46,14 @@ CommandShortcutEventHandler _backspaceInCollapsedSelection = (editorState) {
 
   final position = selection.start;
   final node = editorState.getNodeAtPath(position.path);
+  print(
+    '🔍 Backspace DEBUG: collapsed at path=${position.path}, offset=${position.offset}',
+  );
+  print(
+    '🔍 Backspace DEBUG: node=${node?.type} at ${node?.path}, delta=${node?.delta == null ? 'null' : 'len=${node!.delta!.length}'}',
+  );
   if (node == null) {
+    print('🔍 Backspace DEBUG: node is null, ignoring');
     return KeyEventResult.ignored;
   }
 
@@ -68,7 +75,9 @@ CommandShortcutEventHandler _backspaceInCollapsedSelection = (editorState) {
   // Why do we use prevRunPosition instead of the position start offset?
   // Because some character's length > 1, for example, emoji.
   final index = node.delta!.prevRunePosition(position.offset);
-
+  print(
+    '🔍 Backspace DEBUG: delta.len=${node.delta!.length}, index=$index, offset=${position.offset}',
+  );
   if (index < 0) {
     // move this node to it's parent in below case.
     // the node's next is null
@@ -98,6 +107,36 @@ CommandShortcutEventHandler _backspaceInCollapsedSelection = (editorState) {
 
       Node? tableParent =
           node.findParent((element) => element.type == TableBlockKeys.type);
+      print(
+        '🔍 Backspace DEBUG: tableParent.current=${tableParent?.type}',
+      );
+
+      // 优先删除紧邻在前、且没有 delta 的媒体块（例如 image/video）
+      final directPrev = node.previous;
+      print(
+        '🔍 Backspace DEBUG: directPrev=${directPrev?.type} at ${directPrev?.path}, delta=${directPrev?.delta == null ? 'null' : 'len=${directPrev!.delta!.length}'}',
+      );
+      if (directPrev != null && directPrev.delta == null) {
+        final directPrevTableParent = directPrev
+            .findParent((element) => element.type == TableBlockKeys.type);
+        print(
+          '🔍 Backspace DEBUG: tableParent.directPrev=${directPrevTableParent?.type}',
+        );
+        // 仅在同一表格上下文或都不在表格时才允许删除
+        if (tableParent == directPrevTableParent) {
+          transaction
+            ..deleteNode(directPrev)
+            ..afterSelection = Selection.collapsed(
+              Position(
+                path: node.path,
+                offset: 0,
+              ),
+            );
+          editorState.apply(transaction);
+          return KeyEventResult.handled;
+        }
+      }
+
       Node? prevTableParent;
       final prev = node.previousNodeWhere((element) {
         prevTableParent = element
@@ -107,6 +146,12 @@ CommandShortcutEventHandler _backspaceInCollapsedSelection = (editorState) {
             // merge with the previous node contains delta.
             element.delta != null;
       });
+      print(
+        '🔍 Backspace DEBUG: prevWithDelta=${prev?.type} at ${prev?.path}',
+      );
+      print(
+        '🔍 Backspace DEBUG: tableParent.prev=${prevTableParent?.type}, equalsCurrent=${tableParent == prevTableParent}',
+      );
       // table nodes should be deleted using the table menu
       // in-table paragraphs should only be deleted inside the table
       if (prev != null && tableParent == prevTableParent) {
