@@ -105,11 +105,16 @@ CommandShortcutEventHandler _backspaceInCollapsedSelection = (editorState) {
             .findParent((element) => element.type == TableBlockKeys.type);
         // 仅在同一表格上下文或都不在表格时才允许删除
         if (tableParent == directPrevTableParent) {
+          // 删除前一个媒体块后，当前节点的路径会向前移动一位
+          final newPath = [
+            ...node.path.sublist(0, node.path.length - 1),
+            node.path.last - 1,
+          ];
           transaction
             ..deleteNode(directPrev)
             ..afterSelection = Selection.collapsed(
               Position(
-                path: node.path,
+                path: newPath,
                 offset: 0,
               ),
             );
