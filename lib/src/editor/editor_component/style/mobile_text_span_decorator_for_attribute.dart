@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -48,14 +49,11 @@ TextSpan mobileTextSpanDecoratorForAttribute(
 
       timer = Timer(const Duration(milliseconds: 500), () {
         // Implement long tap logic
-        showDialog<void>(
+        showCupertinoDialog<void>(
           context: context,
           builder: (BuildContext context) {
-            return AlertDialog(
+            return CupertinoAlertDialog(
               title: Text(AppFlowyEditorL10n.current.editLink),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
               content: LinkEditForm(
                 node: node,
                 index: index,
@@ -101,8 +99,6 @@ class LinkEditForm extends StatefulWidget {
 }
 
 class _LinkEditFormState extends State<LinkEditForm> {
-  final _formKey = GlobalKey<FormState>();
-
   @override
   Widget build(BuildContext context) {
     var hrefAddressTextEditingController =
@@ -110,144 +106,144 @@ class _LinkEditFormState extends State<LinkEditForm> {
     var hrefTextTextEditingController =
         TextEditingController(text: widget.hrefText);
 
-    return Form(
-      key: _formKey,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextFormField(
-            key: const Key('Text TextFormField'),
-            autofocus: true,
-            controller: hrefTextTextEditingController,
-            keyboardType: TextInputType.text,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return AppFlowyEditorL10n.current.linkTextHint;
-              }
-              return null;
-            },
-            decoration: InputDecoration(
-              hintText: AppFlowyEditorL10n.current.linkText,
-              suffixIcon: IconButton(
-                icon: const Icon(
-                  Icons.clear_rounded,
-                  size: 16,
-                ),
-                onPressed: hrefTextTextEditingController.clear,
-              ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 16),
+        CupertinoTextField(
+          key: const Key('Text CupertinoTextField'),
+          autofocus: true,
+          controller: hrefTextTextEditingController,
+          keyboardType: TextInputType.text,
+          placeholder: AppFlowyEditorL10n.current.linkText,
+          padding: const EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            color: CupertinoColors.systemGrey6,
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          suffix: CupertinoButton(
+            padding: const EdgeInsets.all(4),
+            minSize: 0,
+            onPressed: hrefTextTextEditingController.clear,
+            child: const Icon(
+              CupertinoIcons.clear_circled_solid,
+              size: 16,
+              color: CupertinoColors.systemGrey,
             ),
           ),
-          TextFormField(
-            key: const Key('Url TextFormField'),
-            controller: hrefAddressTextEditingController,
-            keyboardType: TextInputType.url,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return AppFlowyEditorL10n.current.linkAddressHint;
-              }
-              return null;
-            },
-            decoration: InputDecoration(
-              hintText: AppFlowyEditorL10n.current.urlHint,
-              suffixIcon: IconButton(
-                icon: const Icon(
-                  Icons.clear_rounded,
-                  size: 16,
-                ),
-                onPressed: hrefAddressTextEditingController.clear,
-              ),
+        ),
+        const SizedBox(height: 12),
+        CupertinoTextField(
+          key: const Key('Url CupertinoTextField'),
+          controller: hrefAddressTextEditingController,
+          keyboardType: TextInputType.url,
+          placeholder: AppFlowyEditorL10n.current.urlHint,
+          padding: const EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            color: CupertinoColors.systemGrey6,
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          suffix: CupertinoButton(
+            padding: const EdgeInsets.all(4),
+            minSize: 0,
+            onPressed: hrefAddressTextEditingController.clear,
+            child: const Icon(
+              CupertinoIcons.clear_circled_solid,
+              size: 16,
+              color: CupertinoColors.systemGrey,
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton(
-                child: Text(
-                  AppFlowyEditorL10n.current.removeLink,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-                onPressed: () async {
+        ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            CupertinoDialogAction(
+              isDestructiveAction: true,
+              child: Text(AppFlowyEditorL10n.current.removeLink),
+              onPressed: () async {
+                final transaction = widget.editorState.transaction
+                  ..formatText(
+                    widget.node,
+                    widget.index,
+                    widget.hrefText.length,
+                    {BuiltInAttributeKey.href: null},
+                  );
+                await widget.editorState.apply(transaction).whenComplete(() {
+                  if (context.mounted) {
+                    Navigator.of(context).pop();
+                  }
+                });
+              },
+            ),
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              child: Text(AppFlowyEditorL10n.current.done),
+              onPressed: () async {
+                // 简化验证逻辑，因为CupertinoTextField没有内置验证
+                if (hrefTextTextEditingController.text.isEmpty) {
+                  return; // 可以添加错误提示
+                }
+                if (hrefAddressTextEditingController.text.isEmpty) {
+                  return; // 可以添加错误提示
+                }
+
+                final bool textChanged =
+                    hrefTextTextEditingController.text != widget.hrefText;
+                final bool addressChanged =
+                    hrefAddressTextEditingController.text != widget.hrefAddress;
+
+                if (textChanged && addressChanged) {
                   final transaction = widget.editorState.transaction
-                    ..formatText(
+                    ..replaceText(
                       widget.node,
                       widget.index,
                       widget.hrefText.length,
-                      {BuiltInAttributeKey.href: null},
+                      hrefTextTextEditingController.text,
+                      attributes: {
+                        AppFlowyRichTextKeys.href:
+                            hrefAddressTextEditingController.text,
+                      },
                     );
-                  await widget.editorState.apply(transaction).whenComplete(() {
+                  await widget.editorState.apply(transaction).whenComplete(
+                    () {
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  );
+                } else if (textChanged && !addressChanged) {
+                  final transaction = widget.editorState.transaction
+                    ..replaceText(
+                      widget.node,
+                      widget.index,
+                      widget.hrefText.length,
+                      hrefTextTextEditingController.text,
+                    );
+                  await widget.editorState.apply(transaction).whenComplete(
+                    () {
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  );
+                } else if (!textChanged && addressChanged) {
+                  await widget.editorState.formatDelta(widget.selection, {
+                    AppFlowyRichTextKeys.href:
+                        hrefAddressTextEditingController.value.text,
+                  }).whenComplete(() {
                     if (context.mounted) {
                       Navigator.of(context).pop();
                     }
                   });
-                },
-              ),
-              TextButton(
-                style: TextButton.styleFrom(
-                  textStyle: Theme.of(context).textTheme.labelLarge,
-                ),
-                child: Text(AppFlowyEditorL10n.current.done),
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    final bool textChanged =
-                        hrefTextTextEditingController.text != widget.hrefText;
-                    final bool addressChanged =
-                        hrefAddressTextEditingController.text !=
-                            widget.hrefAddress;
-
-                    if (textChanged && addressChanged) {
-                      final transaction = widget.editorState.transaction
-                        ..replaceText(
-                          widget.node,
-                          widget.index,
-                          widget.hrefText.length,
-                          hrefTextTextEditingController.text,
-                          attributes: {
-                            AppFlowyRichTextKeys.href:
-                                hrefAddressTextEditingController.text,
-                          },
-                        );
-                      await widget.editorState.apply(transaction).whenComplete(
-                        () {
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                          }
-                        },
-                      );
-                    } else if (textChanged && !addressChanged) {
-                      final transaction = widget.editorState.transaction
-                        ..replaceText(
-                          widget.node,
-                          widget.index,
-                          widget.hrefText.length,
-                          hrefTextTextEditingController.text,
-                        );
-                      await widget.editorState.apply(transaction).whenComplete(
-                        () {
-                          if (context.mounted) {
-                            Navigator.of(context).pop();
-                          }
-                        },
-                      );
-                    } else if (!textChanged && addressChanged) {
-                      await widget.editorState.formatDelta(widget.selection, {
-                        AppFlowyRichTextKeys.href:
-                            hrefAddressTextEditingController.value.text,
-                      }).whenComplete(() {
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                        }
-                      });
-                    } else {
-                      Navigator.of(context).pop();
-                    }
-                  }
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
+                } else {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
