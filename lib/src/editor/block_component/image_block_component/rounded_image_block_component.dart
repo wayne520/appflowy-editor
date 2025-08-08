@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 /// 圆角图片块组件
 class RoundedImageBlockComponentBuilder extends BlockComponentBuilder {
@@ -279,35 +280,259 @@ class _RoundedImageBlockComponentWidgetState
   }) =>
       _renderBox.localToGlobal(parentOffset);
 
-  // 显示图片上下文菜单
+  // 显示精美的图片上下文菜单
   void _showImageContextMenu(BuildContext context) {
-    showModalBottomSheet(
+    showCupertinoModalPopup(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return _ImageContextMenu(
-          onViewImage: () {
-            Navigator.pop(context);
-            _viewImageFullscreen(context);
-          },
-          onResizeSmall: () {
-            Navigator.pop(context);
-            _resizeImage(ImageSize.small);
-          },
-          onResizeMedium: () {
-            Navigator.pop(context);
-            _resizeImage(ImageSize.medium);
-          },
-          onResizeLarge: () {
-            Navigator.pop(context);
-            _resizeImage(ImageSize.large);
-          },
-          onDelete: () {
-            Navigator.pop(context);
-            _deleteImage();
-          },
-        );
-      },
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: CupertinoColors.systemBackground,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 顶部拖拽指示器
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemGrey3,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              // 图片信息头部
+              _buildImageHeader(),
+
+              // 菜单选项
+              _buildImageMenuOptions(context),
+
+              // 底部安全区域
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 构建图片信息头部
+  Widget _buildImageHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          // 图片图标
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  CupertinoColors.systemPurple,
+                  CupertinoColors.systemPurple.withValues(alpha: 0.8),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: CupertinoColors.systemPurple.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Icon(
+              CupertinoIcons.photo_fill,
+              color: CupertinoColors.white,
+              size: 28,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // 标题
+          const Text(
+            '图片操作',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: CupertinoColors.label,
+            ),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: 8),
+
+          // 副标题
+          const Text(
+            '选择要执行的操作',
+            style: TextStyle(
+              fontSize: 14,
+              color: CupertinoColors.secondaryLabel,
+              height: 1.3,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建菜单选项
+  Widget _buildImageMenuOptions(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemGrey6.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          _buildImageMenuOption(
+            icon: CupertinoIcons.fullscreen,
+            title: '查看图片',
+            subtitle: '全屏查看原图',
+            color: CupertinoColors.systemBlue,
+            onTap: () {
+              Navigator.of(context).pop();
+              _viewImageFullscreen(context);
+            },
+          ),
+          _buildImageMenuDivider(),
+          _buildImageMenuOption(
+            icon: CupertinoIcons.resize,
+            title: '小图',
+            subtitle: '30% 屏幕宽度',
+            color: CupertinoColors.systemGreen,
+            onTap: () {
+              Navigator.of(context).pop();
+              _resizeImage(ImageSize.small);
+            },
+          ),
+          _buildImageMenuDivider(),
+          _buildImageMenuOption(
+            icon: CupertinoIcons.resize,
+            title: '中图',
+            subtitle: '60% 屏幕宽度',
+            color: CupertinoColors.systemOrange,
+            onTap: () {
+              Navigator.of(context).pop();
+              _resizeImage(ImageSize.medium);
+            },
+          ),
+          _buildImageMenuDivider(),
+          _buildImageMenuOption(
+            icon: CupertinoIcons.resize,
+            title: '大图',
+            subtitle: '90% 屏幕宽度',
+            color: CupertinoColors.systemYellow,
+            onTap: () {
+              Navigator.of(context).pop();
+              _resizeImage(ImageSize.large);
+            },
+          ),
+          _buildImageMenuDivider(),
+          _buildImageMenuOption(
+            icon: CupertinoIcons.trash_fill,
+            title: '删除图片',
+            subtitle: '此操作不可撤销',
+            color: CupertinoColors.systemRed,
+            isDestructive: true,
+            onTap: () {
+              Navigator.of(context).pop();
+              _deleteImage();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建菜单选项
+  Widget _buildImageMenuOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    bool isDestructive = false,
+    required VoidCallback onTap,
+  }) {
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      onPressed: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            // 图标容器
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 20,
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // 文本信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: isDestructive
+                          ? CupertinoColors.systemRed
+                          : CupertinoColors.label,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: CupertinoColors.secondaryLabel,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 箭头图标
+            const Icon(
+              CupertinoIcons.chevron_right,
+              color: CupertinoColors.systemGrey3,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 构建菜单分割线
+  Widget _buildImageMenuDivider() {
+    return Container(
+      margin: const EdgeInsets.only(left: 68),
+      height: 0.5,
+      color: CupertinoColors.systemGrey4.withValues(alpha: 0.6),
     );
   }
 
@@ -368,229 +593,6 @@ enum ImageSize {
   small,
   medium,
   large,
-}
-
-/// 自定义图片上下文菜单
-class _ImageContextMenu extends StatelessWidget {
-  const _ImageContextMenu({
-    required this.onViewImage,
-    required this.onResizeSmall,
-    required this.onResizeMedium,
-    required this.onResizeLarge,
-    required this.onDelete,
-  });
-
-  final VoidCallback onViewImage;
-  final VoidCallback onResizeSmall;
-  final VoidCallback onResizeMedium;
-  final VoidCallback onResizeLarge;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 标题
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.photo_size_select_actual_rounded,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '图片操作',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ],
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // 查看图片选项
-          _buildMenuItem(
-            context,
-            icon: Icons.fullscreen_rounded,
-            title: '查看图片',
-            subtitle: '全屏查看原图',
-            onTap: onViewImage,
-          ),
-
-          const Divider(height: 1),
-
-          // 调整大小选项
-          _buildMenuSection(
-            context,
-            title: '调整大小',
-            icon: Icons.photo_size_select_large_rounded,
-            children: [
-              _buildMenuItem(
-                context,
-                icon: Icons.photo_size_select_small,
-                title: '小图',
-                subtitle: '30% 屏幕宽度',
-                onTap: onResizeSmall,
-              ),
-              _buildMenuItem(
-                context,
-                icon: Icons.photo_size_select_actual,
-                title: '中图',
-                subtitle: '60% 屏幕宽度',
-                onTap: onResizeMedium,
-              ),
-              _buildMenuItem(
-                context,
-                icon: Icons.photo_size_select_large,
-                title: '大图',
-                subtitle: '90% 屏幕宽度',
-                onTap: onResizeLarge,
-              ),
-            ],
-          ),
-
-          const Divider(height: 1),
-
-          // 删除选项
-          _buildMenuItem(
-            context,
-            icon: Icons.delete_rounded,
-            title: '删除图片',
-            subtitle: '此操作不可撤销',
-            onTap: onDelete,
-            isDestructive: true,
-          ),
-
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMenuSection(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
-              ),
-            ],
-          ),
-        ),
-        ...children,
-      ],
-    );
-  }
-
-  Widget _buildMenuItem(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    bool isDestructive = false,
-  }) {
-    final color = isDestructive
-        ? Theme.of(context).colorScheme.error
-        : Theme.of(context).colorScheme.onSurface;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDestructive
-                      ? Theme.of(context).colorScheme.errorContainer
-                      : Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: isDestructive
-                      ? Theme.of(context).colorScheme.onErrorContainer
-                      : Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: color,
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                size: 20,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// 全屏图片查看器
@@ -665,26 +667,7 @@ class _FullscreenImageViewer extends StatelessWidget {
           );
         },
         errorBuilder: (context, error, stackTrace) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.broken_image,
-                  size: 64,
-                  color: Colors.white54,
-                ),
-                SizedBox(height: 16),
-                Text(
-                  '图片加载失败',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          );
+          return _buildErrorWidget();
         },
       );
     } else {
