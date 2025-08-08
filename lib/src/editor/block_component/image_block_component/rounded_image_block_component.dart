@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
@@ -285,6 +286,10 @@ class _RoundedImageBlockComponentWidgetState
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return _ImageContextMenu(
+          onViewImage: () {
+            Navigator.pop(context);
+            _viewImageFullscreen(context);
+          },
           onResizeSmall: () {
             Navigator.pop(context);
             _resizeImage(ImageSize.small);
@@ -303,6 +308,25 @@ class _RoundedImageBlockComponentWidgetState
           },
         );
       },
+    );
+  }
+
+  // 全屏查看图片
+  void _viewImageFullscreen(BuildContext context) {
+    final src = widget.node.attributes[ImageBlockKeys.url] as String?;
+    if (src == null || src.isEmpty) return;
+
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black,
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return _FullscreenImageViewer(imageUrl: src);
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
     );
   }
 
@@ -349,12 +373,14 @@ enum ImageSize {
 /// 自定义图片上下文菜单
 class _ImageContextMenu extends StatelessWidget {
   const _ImageContextMenu({
+    required this.onViewImage,
     required this.onResizeSmall,
     required this.onResizeMedium,
     required this.onResizeLarge,
     required this.onDelete,
   });
 
+  final VoidCallback onViewImage;
   final VoidCallback onResizeSmall;
   final VoidCallback onResizeMedium;
   final VoidCallback onResizeLarge;
@@ -397,6 +423,17 @@ class _ImageContextMenu extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+
+          const Divider(height: 1),
+
+          // 查看图片选项
+          _buildMenuItem(
+            context,
+            icon: Icons.fullscreen_rounded,
+            title: '查看图片',
+            subtitle: '全屏查看原图',
+            onTap: onViewImage,
           ),
 
           const Divider(height: 1),
@@ -551,6 +588,154 @@ class _ImageContextMenu extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 全屏图片查看器
+class _FullscreenImageViewer extends StatelessWidget {
+  const _FullscreenImageViewer({
+    required this.imageUrl,
+  });
+
+  final String imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: SizedBox(
+          width: double.infinity,
+          height: double.infinity,
+          child: Stack(
+            children: [
+              // 图片
+              Center(
+                child: InteractiveViewer(
+                  minScale: 0.5,
+                  maxScale: 3.0,
+                  child: _buildImage(),
+                ),
+              ),
+              // 关闭按钮
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 16,
+                right: 16,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImage() {
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      // 网络图片
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.contain,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                  : null,
+              color: Colors.white,
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.broken_image,
+                  size: 64,
+                  color: Colors.white54,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  '图片加载失败',
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    } else {
+      // 本地图片或 base64
+      try {
+        if (imageUrl.startsWith('data:image')) {
+          // base64 图片
+          final base64String = imageUrl.split(',').last;
+          final bytes = base64Decode(base64String);
+          return Image.memory(
+            bytes,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildErrorWidget();
+            },
+          );
+        } else {
+          // 本地文件
+          return Image.asset(
+            imageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return _buildErrorWidget();
+            },
+          );
+        }
+      } catch (e) {
+        return _buildErrorWidget();
+      }
+    }
+  }
+
+  Widget _buildErrorWidget() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.broken_image,
+            size: 64,
+            color: Colors.white54,
+          ),
+          SizedBox(height: 16),
+          Text(
+            '图片加载失败',
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 16,
+            ),
+          ),
+        ],
       ),
     );
   }
