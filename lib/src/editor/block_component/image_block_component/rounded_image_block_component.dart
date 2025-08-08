@@ -686,8 +686,8 @@ class _FullscreenImageViewer extends StatelessWidget {
           );
         } else {
           // 本地文件
-          return Image.asset(
-            imageUrl,
+          return Image.file(
+            File(imageUrl),
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
               return _buildErrorWidget();
