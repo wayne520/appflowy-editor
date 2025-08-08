@@ -78,14 +78,31 @@ mixin DefaultSelectableMixin {
         shiftWithBaseOffset: shiftWithBaseOffset,
       );
 
-  Selection? getWordEdgeInOffset(Offset offset) =>
-      forward.getWordEdgeInOffset(offset);
+  Selection? getWordEdgeInOffset(Offset offset) {
+    final state = forwardKey.currentState;
+    if (state == null) {
+      // When the inner forward widget (e.g. rich text) is not mounted yet,
+      // fall back to no-op to avoid casting null to SelectableMixin.
+      return null;
+    }
+    return forward.getWordEdgeInOffset(offset);
+  }
 
-  Selection? getWordBoundaryInOffset(Offset offset) =>
-      forward.getWordBoundaryInOffset(offset);
+  Selection? getWordBoundaryInOffset(Offset offset) {
+    final state = forwardKey.currentState;
+    if (state == null) {
+      return null;
+    }
+    return forward.getWordBoundaryInOffset(offset);
+  }
 
-  Selection? getWordBoundaryInPosition(Position position) =>
-      forward.getWordBoundaryInPosition(position);
+  Selection? getWordBoundaryInPosition(Position position) {
+    final state = forwardKey.currentState;
+    if (state == null) {
+      return null;
+    }
+    return forward.getWordBoundaryInPosition(position);
+  }
 
   Position start() => forward.start();
 
