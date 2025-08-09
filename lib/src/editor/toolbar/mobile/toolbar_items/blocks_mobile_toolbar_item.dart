@@ -33,55 +33,72 @@ class _BlocksMenuState extends State<_BlocksMenu> {
     // heading
     _ListUnit(
       icon: AFMobileIcons.h1,
-      label: AppFlowyEditorL10n.current.mobileHeading1,
+      label: '标题1',
       name: HeadingBlockKeys.type,
       level: 1,
     ),
     _ListUnit(
       icon: AFMobileIcons.h2,
-      label: AppFlowyEditorL10n.current.mobileHeading2,
+      label: '标题2',
       name: HeadingBlockKeys.type,
       level: 2,
     ),
     _ListUnit(
       icon: AFMobileIcons.h3,
-      label: AppFlowyEditorL10n.current.mobileHeading3,
+      label: '标题3',
       name: HeadingBlockKeys.type,
       level: 3,
     ),
     // list
     _ListUnit(
       icon: AFMobileIcons.bulletedList,
-      label: AppFlowyEditorL10n.current.bulletedList,
+      label: '项目符号',
       name: BulletedListBlockKeys.type,
     ),
     _ListUnit(
       icon: AFMobileIcons.numberedList,
-      label: AppFlowyEditorL10n.current.numberedList,
+      label: '编号列表',
       name: NumberedListBlockKeys.type,
     ),
     _ListUnit(
       icon: AFMobileIcons.checkbox,
-      label: AppFlowyEditorL10n.current.checkbox,
+      label: '待办事项',
       name: TodoListBlockKeys.type,
     ),
     _ListUnit(
       icon: AFMobileIcons.quote,
-      label: AppFlowyEditorL10n.current.quote,
+      label: '引用',
       name: QuoteBlockKeys.type,
+    ),
+  ];
+
+  final alignmentOptions = [
+    _AlignmentUnit(
+      icon: Icons.format_align_left,
+      label: '左对齐',
+      align: 'left',
+    ),
+    _AlignmentUnit(
+      icon: Icons.format_align_center,
+      label: '居中',
+      align: 'center',
+    ),
+    _AlignmentUnit(
+      icon: Icons.format_align_right,
+      label: '右对齐',
+      align: 'right',
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
     final style = MobileToolbarTheme.of(context);
+    final node = widget.editorState.getNodeAtPath(
+      widget.selection.start.path,
+    )!;
 
-    final children = lists.map((list) {
-      // Check if current node is list and its type
-      final node = widget.editorState.getNodeAtPath(
-        widget.selection.start.path,
-      )!;
-
+    // 块类型选项
+    final blockChildren = lists.map((list) {
       final isSelected = node.type == list.name &&
           (list.level == null ||
               node.attributes[HeadingBlockKeys.level] == list.level);
@@ -118,6 +135,45 @@ class _BlocksMenuState extends State<_BlocksMenu> {
       );
     }).toList();
 
+    // 对齐选项
+    final alignmentChildren = alignmentOptions.map((alignment) {
+      final currentAlign = node.attributes[blockComponentAlign] as String?;
+      final isSelected = (alignment.align == 'left' && currentAlign == null) ||
+          currentAlign == alignment.align;
+
+      return MobileToolbarItemMenuBtn(
+        icon: Icon(
+          alignment.icon,
+          color: MobileToolbarTheme.of(context).iconColor,
+          size: 20,
+        ),
+        label: Text(
+          alignment.label,
+          style: TextStyle(
+            fontSize: 12,
+            color: MobileToolbarTheme.of(context).foregroundColor,
+          ),
+        ),
+        isSelected: isSelected,
+        onPressed: () {
+          setState(() {
+            widget.editorState.updateNode(
+              widget.selection,
+              (node) => node.copyWith(
+                attributes: {
+                  ...node.attributes,
+                  blockComponentAlign: alignment.align == 'left' ? null : alignment.align,
+                },
+              ),
+            );
+          });
+        },
+      );
+    }).toList();
+
+    // 合并所有选项
+    final allChildren = [...blockChildren, ...alignmentChildren];
+
     return GridView(
       shrinkWrap: true,
       padding: EdgeInsets.zero,
@@ -125,7 +181,7 @@ class _BlocksMenuState extends State<_BlocksMenu> {
         mobileToolbarStyle: style,
         crossAxisCount: 2,
       ),
-      children: children,
+      children: allChildren,
     );
   }
 }
@@ -141,5 +197,17 @@ class _ListUnit {
     required this.label,
     required this.name,
     this.level,
+  });
+}
+
+class _AlignmentUnit {
+  final IconData icon;
+  final String label;
+  final String align;
+
+  _AlignmentUnit({
+    required this.icon,
+    required this.label,
+    required this.align,
   });
 }
