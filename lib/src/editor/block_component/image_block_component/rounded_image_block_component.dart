@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 
 /// 圆角图片块组件
 class RoundedImageBlockComponentBuilder extends BlockComponentBuilder {
@@ -397,17 +397,6 @@ class _RoundedImageBlockComponentWidgetState
       child: Column(
         children: [
           _buildImageMenuOption(
-            icon: CupertinoIcons.fullscreen,
-            title: '查看图片',
-            subtitle: '全屏查看原图',
-            color: CupertinoColors.systemBlue,
-            onTap: () {
-              Navigator.of(context).pop();
-              _viewImageFullscreen(context);
-            },
-          ),
-          _buildImageMenuDivider(),
-          _buildImageMenuOption(
             icon: CupertinoIcons.square_arrow_up,
             title: '用系统程序打开',
             subtitle: '使用默认图片查看器',
@@ -548,24 +537,7 @@ class _RoundedImageBlockComponentWidgetState
     );
   }
 
-  // 全屏查看图片
-  void _viewImageFullscreen(BuildContext context) {
-    final src = widget.node.attributes[ImageBlockKeys.url] as String?;
-    if (src == null || src.isEmpty) return;
 
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        opaque: false,
-        barrierColor: Colors.black,
-        pageBuilder: (context, animation, secondaryAnimation) {
-          return _FullscreenImageViewer(imageUrl: src);
-        },
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
-  }
 
   // 用系统程序打开图片
   void _openImageWithSystemApp(BuildContext context) async {
@@ -587,35 +559,24 @@ class _RoundedImageBlockComponentWidgetState
 
       print('🖼️ [ImageOpener] 尝试打开图片: $src');
 
-      final result = await OpenFile.open(
-        src,
-        type: 'image/*',
-        uti: 'public.image',
-        linuxUseGio: true,
-      );
-
-      print('🖼️ [ImageOpener] 打开结果: ${result.type} - ${result.message}');
-
-      switch (result.type) {
-        case ResultType.done:
-          _showMessage(context, '图片已打开');
-          break;
-        case ResultType.fileNotFound:
-          _showMessage(context, '图片文件不存在');
-          break;
-        case ResultType.noAppToOpen:
-          _showMessage(context, '没有应用程序可以打开此图片');
-          break;
-        case ResultType.permissionDenied:
-          _showMessage(context, '没有权限访问此图片');
-          break;
-        case ResultType.error:
-          _showMessage(context, '打开图片时发生错误：${result.message}');
-          break;
+      // 根据平台处理
+      if (Platform.operatingSystem == 'ohos') {
+        // 鸿蒙平台处理
+        String filePath = "file://com.mrjguet.dream$src";
+        print('🖼️ [OpenFilex-OHOS] 鸿蒙路径: $filePath');
+        await OpenFilex.open(filePath);
+        _showMessage(context, '图片已打开');
+      } else if (Platform.isIOS) {
+        // iOS平台处理
+        print('🖼️ [OpenFilex-iOS] iOS路径: $src');
+        await OpenFilex.open(src);
+        _showMessage(context, '图片已打开');
+      } else {
+        // 其他平台暂不支持
+        _showMessage(context, '当前平台暂不支持打开图片');
       }
     } catch (e) {
-      print('🖼️ [ImageOpener] 打开图片异常: $e');
-      _showMessage(context, '打开图片失败：$e');
+      // 静默处理异常
     }
   }
 
@@ -669,131 +630,4 @@ enum ImageSize {
   large,
 }
 
-/// 全屏图片查看器
-class _FullscreenImageViewer extends StatelessWidget {
-  const _FullscreenImageViewer({
-    required this.imageUrl,
-  });
 
-  final String imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: GestureDetector(
-        onTap: () => Navigator.of(context).pop(),
-        child: SizedBox(
-          width: double.infinity,
-          height: double.infinity,
-          child: Stack(
-            children: [
-              // 图片
-              Center(
-                child: InteractiveViewer(
-                  minScale: 0.5,
-                  maxScale: 3.0,
-                  child: _buildImage(),
-                ),
-              ),
-              // 关闭按钮
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 16,
-                right: 16,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImage() {
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      // 网络图片
-      return Image.network(
-        imageUrl,
-        fit: BoxFit.contain,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                      loadingProgress.expectedTotalBytes!
-                  : null,
-              color: Colors.white,
-            ),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return _buildErrorWidget();
-        },
-      );
-    } else {
-      // 本地图片或 base64
-      try {
-        if (imageUrl.startsWith('data:image')) {
-          // base64 图片
-          final base64String = imageUrl.split(',').last;
-          final bytes = base64Decode(base64String);
-          return Image.memory(
-            bytes,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return _buildErrorWidget();
-            },
-          );
-        } else {
-          // 本地文件
-          return Image.file(
-            File(imageUrl),
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return _buildErrorWidget();
-            },
-          );
-        }
-      } catch (e) {
-        return _buildErrorWidget();
-      }
-    }
-  }
-
-  Widget _buildErrorWidget() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.broken_image,
-            size: 64,
-            color: Colors.white54,
-          ),
-          SizedBox(height: 16),
-          Text(
-            '图片加载失败',
-            style: TextStyle(
-              color: Colors.white54,
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
