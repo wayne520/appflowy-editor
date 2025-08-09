@@ -49,9 +49,9 @@ class _TextAndBackgroundColorMenuState
     final style = MobileToolbarTheme.of(context);
     List<Tab> myTabs = <Tab>[
       Tab(
-        text: AppFlowyEditorL10n.current.textColor,
+        text: '文字颜色',
       ),
-      Tab(text: AppFlowyEditorL10n.current.backgroundColor),
+      Tab(text: '背景颜色'),
     ];
 
     return DefaultTabController(

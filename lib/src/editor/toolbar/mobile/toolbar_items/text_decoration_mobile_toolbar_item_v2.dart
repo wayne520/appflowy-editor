@@ -33,29 +33,29 @@ class _TextDecorationMenuState extends State<_TextDecorationMenu> {
     // BIUS
     TextDecorationUnit(
       icon: AFMobileIcons.bold,
-      label: AppFlowyEditorL10n.current.bold,
+      label: '粗体',
       name: AppFlowyRichTextKeys.bold,
     ),
     TextDecorationUnit(
       icon: AFMobileIcons.italic,
-      label: AppFlowyEditorL10n.current.italic,
+      label: '斜体',
       name: AppFlowyRichTextKeys.italic,
     ),
     TextDecorationUnit(
       icon: AFMobileIcons.underline,
-      label: AppFlowyEditorL10n.current.underline,
+      label: '下划线',
       name: AppFlowyRichTextKeys.underline,
     ),
     TextDecorationUnit(
       icon: AFMobileIcons.strikethrough,
-      label: AppFlowyEditorL10n.current.strikethrough,
+      label: '删除线',
       name: AppFlowyRichTextKeys.strikethrough,
     ),
 
     // Code
     TextDecorationUnit(
       icon: AFMobileIcons.code,
-      label: AppFlowyEditorL10n.current.embedCode,
+      label: '代码',
       name: AppFlowyRichTextKeys.code,
     ),
   ];
