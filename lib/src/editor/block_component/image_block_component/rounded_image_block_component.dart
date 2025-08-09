@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:open_file/open_file.dart';
 
 /// 圆角图片块组件
 class RoundedImageBlockComponentBuilder extends BlockComponentBuilder {
@@ -407,6 +408,17 @@ class _RoundedImageBlockComponentWidgetState
           ),
           _buildImageMenuDivider(),
           _buildImageMenuOption(
+            icon: CupertinoIcons.square_arrow_up,
+            title: '用系统程序打开',
+            subtitle: '使用默认图片查看器',
+            color: CupertinoColors.systemPurple,
+            onTap: () {
+              Navigator.of(context).pop();
+              _openImageWithSystemApp(context);
+            },
+          ),
+          _buildImageMenuDivider(),
+          _buildImageMenuOption(
             icon: CupertinoIcons.resize,
             title: '小图',
             subtitle: '30% 屏幕宽度',
@@ -555,6 +567,58 @@ class _RoundedImageBlockComponentWidgetState
     );
   }
 
+  // 用系统程序打开图片
+  void _openImageWithSystemApp(BuildContext context) async {
+    final src = widget.node.attributes[ImageBlockKeys.url] as String?;
+    if (src == null || src.isEmpty) return;
+
+    // 只支持本地文件
+    if (src.startsWith('http')) {
+      _showMessage(context, '网络图片无法用系统程序打开');
+      return;
+    }
+
+    try {
+      final file = File(src);
+      if (!await file.exists()) {
+        _showMessage(context, '图片文件不存在');
+        return;
+      }
+
+      print('🖼️ [ImageOpener] 尝试打开图片: $src');
+
+      final result = await OpenFile.open(
+        src,
+        type: 'image/*',
+        uti: 'public.image',
+        linuxUseGio: true,
+      );
+
+      print('🖼️ [ImageOpener] 打开结果: ${result.type} - ${result.message}');
+
+      switch (result.type) {
+        case ResultType.done:
+          _showMessage(context, '图片已打开');
+          break;
+        case ResultType.fileNotFound:
+          _showMessage(context, '图片文件不存在');
+          break;
+        case ResultType.noAppToOpen:
+          _showMessage(context, '没有应用程序可以打开此图片');
+          break;
+        case ResultType.permissionDenied:
+          _showMessage(context, '没有权限访问此图片');
+          break;
+        case ResultType.error:
+          _showMessage(context, '打开图片时发生错误：${result.message}');
+          break;
+      }
+    } catch (e) {
+      print('🖼️ [ImageOpener] 打开图片异常: $e');
+      _showMessage(context, '打开图片失败：$e');
+    }
+  }
+
   // 调整图片大小
   void _resizeImage(ImageSize size) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -585,6 +649,16 @@ class _RoundedImageBlockComponentWidgetState
     final transaction = editorState.transaction;
     transaction.deleteNode(node);
     editorState.apply(transaction);
+  }
+
+  // 显示消息
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 }
 
