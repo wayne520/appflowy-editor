@@ -4,6 +4,7 @@ import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:open_filex/open_filex.dart';
+import '../../../infra/path_utils.dart';
 
 /// 圆角图片块组件
 class RoundedImageBlockComponentBuilder extends BlockComponentBuilder {
@@ -172,13 +173,36 @@ class _RoundedImageBlockComponentWidgetState
             _buildErrorWidget(width, height),
       );
     } else {
-      imageWidget = Image.file(
-        File(src),
-        width: width,
-        height: height,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            _buildErrorWidget(width, height),
+      // 处理本地文件（支持相对路径）
+      imageWidget = FutureBuilder<String>(
+        future: PathUtils.resolveRelativePath(src),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return Image.file(
+              File(snapshot.data!),
+              width: width,
+              height: height,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  _buildErrorWidget(width, height),
+            );
+          } else if (snapshot.hasError) {
+            print('🖼️ 图片路径解析失败: ${snapshot.error}');
+            return _buildErrorWidget(width, height);
+          } else {
+            return Container(
+              width: width,
+              height: height ?? 200,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+        },
       );
     }
 
@@ -551,25 +575,27 @@ class _RoundedImageBlockComponentWidgetState
     }
 
     try {
-      final file = File(src);
+      // 解析相对路径为绝对路径
+      final absolutePath = await PathUtils.resolveRelativePath(src);
+      final file = File(absolutePath);
       if (!await file.exists()) {
         _showMessage(context, '图片文件不存在');
         return;
       }
 
-      print('🖼️ [ImageOpener] 尝试打开图片: $src');
+      print('🖼️ [ImageOpener] 尝试打开图片: $absolutePath');
 
       // 根据平台处理
       if (Platform.operatingSystem == 'ohos') {
         // 鸿蒙平台处理
-        String filePath = "file://com.mrjguet.dream$src";
+        String filePath = "file://com.mrjguet.dream$absolutePath";
         print('🖼️ [OpenFilex-OHOS] 鸿蒙路径: $filePath');
         await OpenFilex.open(filePath);
         _showMessage(context, '图片已打开');
       } else if (Platform.isIOS) {
         // iOS平台处理
-        print('🖼️ [OpenFilex-iOS] iOS路径: $src');
-        await OpenFilex.open(src);
+        print('🖼️ [OpenFilex-iOS] iOS路径: $absolutePath');
+        await OpenFilex.open(absolutePath);
         _showMessage(context, '图片已打开');
       } else {
         // 其他平台暂不支持

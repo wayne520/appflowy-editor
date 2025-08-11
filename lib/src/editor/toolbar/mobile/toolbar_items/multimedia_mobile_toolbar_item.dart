@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 
 final multimediaMobileToolbarItem = MobileToolbarItem.withMenu(
   itemIconBuilder: (context, __, ___) => Icon(
@@ -189,15 +192,19 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
     bool showSuccessMessage = true,
   }) async {
     try {
-      // 获取文件路径
-      final path = file.path;
+      print('📁 开始处理媒体文件: ${file.path}');
+      print('📁 文件类型: $type');
+
+      // 将文件复制到文档目录
+      final permanentPath = await _copyFileToDocuments(file, type);
+      print('📁 文件已复制到: $permanentPath');
 
       // 创建图片或视频节点
       Node mediaNode;
       if (type == 'image') {
         // 使用正确的图片块节点，添加圆角支持
         mediaNode = imageNode(
-          url: path,
+          url: permanentPath,
           align: 'center', // 居中对齐
           width: 400.0, // 设置默认宽度
         );
@@ -214,7 +221,7 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
         mediaNode = Node(
           type: 'video',
           attributes: {
-            'url': path,
+            'url': permanentPath,
             'align': 'center',
             'width': 400.0,
             'height': 225.0,
@@ -290,6 +297,63 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
       }
 
       _showErrorMessage('$errorMessage: $e');
+    }
+  }
+
+  /// 将文件复制到文档目录
+  Future<String> _copyFileToDocuments(XFile file, String type) async {
+    try {
+      // 获取文档目录
+      final documentsDir = await getApplicationDocumentsDirectory();
+
+      // 创建媒体文件夹
+      final mediaDir = Directory(path.join(documentsDir.path, 'media'));
+      if (!await mediaDir.exists()) {
+        await mediaDir.create(recursive: true);
+        print('📁 创建媒体目录: ${mediaDir.path}');
+      }
+
+      // 生成唯一文件名
+      final originalFileName = path.basename(file.path);
+      final extension = path.extension(originalFileName);
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final newFileName = '${type}_${timestamp}$extension';
+
+      // 目标文件路径
+      final targetPath = path.join(mediaDir.path, newFileName);
+
+      print('📁 复制文件:');
+      print('   源路径: ${file.path}');
+      print('   目标路径: $targetPath');
+
+      // 复制文件
+      final sourceFile = File(file.path);
+      final targetFile = await sourceFile.copy(targetPath);
+
+      // 验证文件是否复制成功
+      if (await targetFile.exists()) {
+        final sourceSize = await sourceFile.length();
+        final targetSize = await targetFile.length();
+        print('📁 文件复制成功:');
+        print('   源文件大小: $sourceSize bytes');
+        print('   目标文件大小: $targetSize bytes');
+
+        if (sourceSize == targetSize) {
+          print('📁 ✅ 文件完整性验证通过');
+        } else {
+          print('📁 ⚠️ 文件大小不匹配，可能复制不完整');
+        }
+
+        // 返回相对路径而不是绝对路径
+        final relativePath = 'media/$newFileName';
+        print('📁 返回相对路径: $relativePath');
+        return relativePath;
+      } else {
+        throw Exception('文件复制失败：目标文件不存在');
+      }
+    } catch (e) {
+      print('📁 ❌ 复制文件到文档目录失败: $e');
+      rethrow;
     }
   }
 

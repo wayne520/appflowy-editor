@@ -31,6 +31,9 @@ dependencies:
   markdown: "^7.2.1"
   nanoid: "^1.0.0"
   numerus: "^2.1.2"
+  open_filex: "^4.3.2"
+  path: "^1.8.3"
+  path_provider: "^2.0.5"
   pdf: "^3.10.7"
   provider: "^6.0.5"
   scroll_to_index: "^3.0.1"
@@ -47,7 +50,6 @@ dev_dependencies:
   intl_utils: "^2.8.2"
   mockito: "^5.4.1"
   network_image_mock: "^2.1.1"
-  path_provider: "^2.0.5"
   pubspec_dependency_sorter: "^1.0.5"
 
 platforms:

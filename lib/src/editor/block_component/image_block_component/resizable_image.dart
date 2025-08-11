@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:string_validator/string_validator.dart';
 
 import 'base64_image.dart';
+import '../../../infra/path_utils.dart';
 
 class ResizableImage extends StatefulWidget {
   const ResizableImage({
@@ -97,9 +98,26 @@ class _ResizableImageState extends State<ResizableImage> {
       );
       child = _cacheImage!;
     } else {
-      // load local file
-      _cacheImage ??= Image.file(File(src));
-      child = _cacheImage!;
+      // load local file (支持相对路径)
+      child = FutureBuilder<String>(
+        future: PathUtils.resolveRelativePath(src),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            final image = Image.file(
+              File(snapshot.data!),
+              width: widget.width,
+              gaplessPlayback: true,
+              errorBuilder: (context, error, stackTrace) => _buildError(context),
+            );
+            _cacheImage = image; // 缓存解析后的图片
+            return image;
+          } else if (snapshot.hasError) {
+            return _buildError(context);
+          } else {
+            return _buildLoading(context);
+          }
+        },
+      );
     }
     return Stack(
       children: [
