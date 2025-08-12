@@ -303,7 +303,7 @@ class _MultimediaMenuState extends State<_MultimediaMenu> {
   /// 将文件复制到文档目录
   Future<String> _copyFileToDocuments(XFile file, String type) async {
     try {
-      // 获取文档目录
+      // 获取文档目录（优先 iCloud）
       final documentsDir = await getApplicationDocumentsDirectory();
 
       // 创建媒体文件夹

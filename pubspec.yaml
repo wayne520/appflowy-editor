@@ -31,7 +31,6 @@ dependencies:
   markdown: "^7.2.1"
   nanoid: "^1.0.0"
   numerus: "^2.1.2"
-  open_filex: "^4.3.2"
   path: "^1.8.3"
   path_provider: "^2.0.5"
   pdf: "^3.10.7"
