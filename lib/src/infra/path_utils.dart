@@ -1,17 +1,55 @@
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart' as path_provider;
 import 'package:path/path.dart' as path;
-import 'package:dreamnote/utils/path_utils.dart' as app_paths;
 
 /// 路径工具类 - 处理相对路径和绝对路径的转换（供编辑器组件使用）
-/// 注意：这里统一委托到应用层的 PathUtils，以确保在 iOS 上优先使用 iCloud 容器路径。
+/// 注意：这里仍然默认使用应用文档目录；如果你在 App 层有 iCloud 根，请在运行时把该目录指向 iCloud。
 class PathUtils {
   static Directory? _documentsDir;
+  static String? documentsPathSync; // 提供同步解析时使用
 
-  /// 初始化文档目录
+  /// 初始化文档目录（iOS 优先尝试通过 MethodChannel 获取 iCloud Documents）
   static Future<void> initialize() async {
-    // 委托到应用层 PathUtils，优先使用 iCloud 容器
-    _documentsDir ??= await app_paths.PathUtils.getDocumentsDirectory();
+    if (_documentsDir != null) {
+      return;
+    }
+
+    if (Platform.isIOS) {
+      const channel = MethodChannel('com.mrjguet.dream/icloud');
+      try {
+        final String? icloudPath =
+            await channel.invokeMethod<String>('getICloudDocumentsPath');
+        if (icloudPath != null && icloudPath.isNotEmpty) {
+          final dir = Directory(icloudPath);
+          if (!await dir.exists()) {
+            await dir.create(recursive: true);
+          }
+          _documentsDir = dir;
+          documentsPathSync = dir.path;
+          // ignore: avoid_print
+          print('[PathUtils] initialize via iCloud documentsDir=${dir.path}');
+          return;
+        }
+      } catch (e) {
+        // ignore: avoid_print
+        print('[PathUtils] iCloud MethodChannel failed: $e');
+      }
+    }
+
+    _documentsDir ??= await path_provider.getApplicationDocumentsDirectory();
+    documentsPathSync ??= _documentsDir!.path;
+    // ignore: avoid_print
+    print('[PathUtils] initialize documentsDir=${_documentsDir!.path}');
+  }
+
+  /// 外部可注入文档根（例如 App 层已解析出 iCloud 容器路径时）
+  static void setDocumentsDirectorySync(String dirPath) {
+    documentsPathSync = dirPath;
+    _documentsDir = Directory(dirPath);
+    // Debug log
+    // ignore: avoid_print
+    print('[PathUtils] setDocumentsDirectorySync dirPath=$dirPath');
   }
 
   /// 获取文档目录
@@ -29,11 +67,17 @@ class PathUtils {
   static Future<String> resolveRelativePath(String relativePath) async {
     // 如果已经是绝对路径，直接返回
     if (path.isAbsolute(relativePath)) {
+      // ignore: avoid_print
+      print('[PathUtils] resolveRelativePath already absolute: $relativePath');
       return relativePath;
     }
 
     final documentsDir = await getDocumentsDirectory();
     final absolutePath = path.join(documentsDir.path, relativePath);
+    // ignore: avoid_print
+    print(
+      '[PathUtils] resolveRelativePath relative: $relativePath -> $absolutePath',
+    );
 
     return absolutePath;
   }
@@ -146,8 +190,9 @@ class PathUtils {
   static String formatFileSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024)
+    if (bytes < 1024 * 1024 * 1024) {
       return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 

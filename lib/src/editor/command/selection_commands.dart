@@ -1,4 +1,5 @@
 import 'package:appflowy_editor/appflowy_editor.dart';
+import 'package:appflowy_editor/src/editor/util/media_cleanup.dart';
 
 enum SelectionMoveRange {
   character,
@@ -81,6 +82,8 @@ extension SelectionTransform on EditorState {
           selection.length,
         );
       } else if (!ignoreNodeTypes.contains(node.parent?.type)) {
+        // cleanup physical file if this is a media-like node
+        MediaCleanup.deleteNodeFilesSync(node);
         transaction.deleteNode(node);
       }
     }
@@ -117,6 +120,8 @@ extension SelectionTransform on EditorState {
               selection.end.offset,
             );
           } else if (!ignoreNodeTypes.contains(node.type)) {
+            // cleanup physical file if this is a media-like node
+            MediaCleanup.deleteNodeFilesSync(node);
             transaction.deleteNode(node);
           }
           continue;

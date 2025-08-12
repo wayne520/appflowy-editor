@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:open_filex/open_filex.dart';
 import '../../../infra/path_utils.dart';
+import '../../util/media_cleanup.dart';
 
 /// 圆角图片块组件
 class RoundedImageBlockComponentBuilder extends BlockComponentBuilder {
@@ -561,8 +562,6 @@ class _RoundedImageBlockComponentWidgetState
     );
   }
 
-
-
   // 用系统程序打开图片
   void _openImageWithSystemApp(BuildContext context) async {
     final src = widget.node.attributes[ImageBlockKeys.url] as String?;
@@ -631,11 +630,13 @@ class _RoundedImageBlockComponentWidgetState
     editorState.apply(transaction);
   }
 
-  // 删除图片
-  void _deleteImage() {
+  // 删除图片（同时删除物理文件）
+  Future<void> _deleteImage() async {
+    // 先清理物理文件
+    await MediaCleanup.deleteNodeFiles(node);
     final transaction = editorState.transaction;
     transaction.deleteNode(node);
-    editorState.apply(transaction);
+    await editorState.apply(transaction);
   }
 
   // 显示消息
@@ -655,5 +656,3 @@ enum ImageSize {
   medium,
   large,
 }
-
-

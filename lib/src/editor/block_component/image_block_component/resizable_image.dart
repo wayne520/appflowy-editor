@@ -103,11 +103,16 @@ class _ResizableImageState extends State<ResizableImage> {
         future: PathUtils.resolveRelativePath(src),
         builder: (context, snapshot) {
           if (snapshot.hasData) {
+            final absPath = snapshot.data!;
+            final file = File(absPath);
+            // ignore: avoid_print
+            print('[ImageRender] absPath=$absPath exists=${file.existsSync()}');
             final image = Image.file(
-              File(snapshot.data!),
+              file,
               width: widget.width,
               gaplessPlayback: true,
-              errorBuilder: (context, error, stackTrace) => _buildError(context),
+              errorBuilder: (context, error, stackTrace) =>
+                  _buildError(context),
             );
             _cacheImage = image; // 缓存解析后的图片
             return image;

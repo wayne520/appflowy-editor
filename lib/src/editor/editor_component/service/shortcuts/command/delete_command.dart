@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
+import 'package:appflowy_editor/src/editor/util/media_cleanup.dart';
 
 /// Delete key event.
 ///
@@ -65,6 +66,8 @@ CommandShortcutEventHandler _deleteInCollapsedSelection = (editorState) {
         final path = node.path + [node.children.length];
         transaction.insertNodes(path, next.children);
       }
+      // cleanup physical files for media-like nodes before deletion
+      MediaCleanup.deleteNodeFilesSync(next);
       transaction
         ..deleteNode(next)
         ..mergeText(
@@ -106,6 +109,18 @@ CommandShortcutEventHandler _deleteInBlockSelection = (editorState) {
     return KeyEventResult.ignored;
   }
   final transaction = editorState.transaction;
+  // 清理被删除的节点（尽量只清理媒体类节点）
+  final parent = editorState.document.nodeAtPath(selection.start.path.parent);
+  if (parent != null) {
+    final startIndex = selection.start.path.last;
+    final deletingNodes = <Node>[];
+    for (var i = startIndex; i < parent.children.length; i++) {
+      deletingNodes.add(parent.children.elementAt(i));
+    }
+    for (final n in deletingNodes) {
+      MediaCleanup.deleteNodeFilesSync(n);
+    }
+  }
   transaction.deleteNodesAtPath(selection.start.path);
   editorState
       .apply(transaction)

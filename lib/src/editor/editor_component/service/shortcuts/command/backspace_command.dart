@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:appflowy_editor/appflowy_editor.dart';
+import '../../../../util/media_cleanup.dart';
 
 /// Backspace key event.
 ///
@@ -54,6 +55,8 @@ CommandShortcutEventHandler _backspaceInCollapsedSelection = (editorState) {
 
   // delete the entire node if the delta is empty
   if (node.delta == null) {
+    // cleanup media file if needed
+    MediaCleanup.deleteNodeFilesSync(node);
     transaction.deleteNode(node);
     transaction.afterSelection = Selection.collapsed(
       Position(
@@ -110,6 +113,8 @@ CommandShortcutEventHandler _backspaceInCollapsedSelection = (editorState) {
             ...node.path.sublist(0, node.path.length - 1),
             node.path.last - 1,
           ];
+          // cleanup the media/file node before deletion
+          MediaCleanup.deleteNodeFilesSync(directPrev);
           transaction
             ..deleteNode(directPrev)
             ..afterSelection = Selection.collapsed(
@@ -185,6 +190,18 @@ CommandShortcutEventHandler _backspaceInBlockSelection = (editorState) {
     return KeyEventResult.ignored;
   }
   final transaction = editorState.transaction;
+  // cleanup nodes to be deleted under block selection
+  final parent = editorState.document.nodeAtPath(selection.start.path.parent);
+  if (parent != null) {
+    final startIndex = selection.start.path.last;
+    final deletingNodes = <Node>[];
+    for (var i = startIndex; i < parent.children.length; i++) {
+      deletingNodes.add(parent.children.elementAt(i));
+    }
+    for (final n in deletingNodes) {
+      MediaCleanup.deleteNodeFilesSync(n);
+    }
+  }
   transaction.deleteNodesAtPath(selection.start.path);
   editorState
       .apply(transaction)
@@ -201,6 +218,10 @@ CommandShortcutEventHandler _backspaceInSelectAll = (editorState) {
 
   final transaction = editorState.transaction;
   final nodes = editorState.getNodesInSelection(selection);
+  // cleanup files for all nodes within selection (best-effort)
+  for (final n in nodes) {
+    MediaCleanup.deleteNodeFilesSync(n);
+  }
   transaction.deleteNodes(nodes);
 
   // Insert a new paragraph node to avoid locking the editor
